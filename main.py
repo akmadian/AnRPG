@@ -15,12 +15,11 @@ from colors_file import Color
 x = pygame.init()
 print(x)
 base_path = os.path.os.path.dirname(os.path.realpath(sys.argv[0]))
-
+textures_base_path = base_path + '/Textures/'
 fonts_path = base_path + '/Fonts/'
 fps_font = pygame.font.Font(fonts_path + 'roboto/Roboto-Light.ttf', 20)
-textures_path = base_path + '/Textures/'
-home = textures_path + 'Built-Textures/home_area_fixed.png'
-character = base_path + '/sprite.png'
+home = textures_base_path + 'Built-Textures/home_area_fixed.png'
+character = textures_base_path + '/sprite.png'
 
 window_width = 1200
 window_height = 800
@@ -30,7 +29,7 @@ game_display = pygame.display.set_mode((window_width, window_height),
                                        pygame.HWSURFACE)
  
 def title_screen():
-    background = base_path + '/title_screen.jpg'
+    background = textures_base_path + '/title_screen.jpg'
     font_size = 0
     frames = 0
     enter_game = False
