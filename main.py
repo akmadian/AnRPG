@@ -10,16 +10,25 @@ import pygame
 import sys
 import os
 import time
+import asyncio
+import classes
+import inputbox
 from colors_file import Color
 
+
+#TODO: Block bad words for player name input
+
 x = pygame.init()
+player = classes.Player
+
 print(x)
 base_path = os.path.os.path.dirname(os.path.realpath(sys.argv[0]))
 textures_base_path = base_path + '/Textures/'
 fonts_path = base_path + '/Fonts/'
 fps_font = pygame.font.Font(fonts_path + 'roboto/Roboto-Light.ttf', 20)
 home = textures_base_path + 'Built-Textures/home_area_fixed.png'
-character = textures_base_path + '/sprite.png'
+player_sprite = os.path.os.path.dirname(os.path.realpath(sys.argv[0])) \
+                      + '/Textures/' + '/player_sprite.png'
 
 window_width = 1200
 window_height = 800
@@ -29,6 +38,8 @@ game_display = pygame.display.set_mode((window_width, window_height),
                                        pygame.HWSURFACE)
  
 def title_screen():
+    player.player_name = inputbox.ask(game_display, "Player Name")
+    print(player.player_name)
     background = textures_base_path + '/title_screen.jpg'
     font_size = 0
     frames = 0
@@ -97,7 +108,7 @@ while not gameExit:
     game_display.fill(Color.White)
     fps_overlay = fps_font.render((str(char_x) + ', ' + str(char_y)), True, Color.Goldenrod)
     game_display.blit(pygame.image.load(home), (0,0))
-    game_display.blit(pygame.image.load(character), (char_x, char_y))
+    game_display.blit(pygame.image.load(player_sprite), (char_x, char_y))
     game_display.blit(fps_overlay, (0,0))
 
 
