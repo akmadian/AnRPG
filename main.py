@@ -10,18 +10,22 @@ import pygame
 import sys
 import os
 import time
-import asyncio
+
+# Game Resources
 import classes
 import inputbox
 from colors_file import Color
 
 
-#TODO: Fix multiple keydown issue
+#TODO: Player faces left and right toward mouse
+#TODO: Projectiles with asyncio
+#TODO: Config file implementation?
 
 x = pygame.init()
 player = classes.Player
+player.pos_x = 100
+player.pos_y =100
 
-print(x)
 base_path = os.path.os.path.dirname(os.path.realpath(sys.argv[0]))
 textures_base_path = base_path + '/Textures/'
 fonts_path = base_path + '/Fonts/'
@@ -36,6 +40,8 @@ window_title = 'RPG Game'
 pygame.display.set_caption(window_title)
 game_display = pygame.display.set_mode((window_width, window_height),
                                        pygame.HWSURFACE)
+
+keys_down = {'w': None, 'a': None, 's': None, 'd': None}
  
 def title_screen():
     player.player_name = inputbox.ask(game_display, "Player Name")
@@ -63,13 +69,6 @@ def title_screen():
         pygame.display.update()
         frames += 1
         time.sleep(0.01666667)
-
-
-
-char_x = 100
-char_y = 100
-char_move = 0
-
 title_screen()
 
 gameExit = False
@@ -78,37 +77,36 @@ while not gameExit:
         if event.type == pygame.QUIT:
             gameExit = True
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w:
-                char_move = 1
-            elif event.key == pygame.K_s:
-                char_move = 2
-            elif event.key == pygame.K_a:
-                char_move = 3
-            elif event.key == pygame.K_d:
-                char_move = 4
+            if event.key == pygame.K_w: keys_down['w'] = True
+            elif event.key == pygame.K_a: keys_down['a'] = True
+            elif event.key == pygame.K_s: keys_down['s'] = True
+            elif event.key == pygame.K_d: keys_down['d'] = True
+
         elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_w: keys_down['w'] = False
+            elif event.key == pygame.K_a: keys_down['a'] = False
+            elif event.key == pygame.K_s: keys_down['s'] = False
+            elif event.key == pygame.K_d: keys_down['d'] = False
+
             if event.key == pygame.K_w or \
-                            pygame.K_s or \
                             pygame.K_a or \
+                            pygame.K_s or \
                             pygame.K_d:
                 char_move = 0
 
         print(event)
 
-    if char_move == 1:
-        char_y -= 3
-    elif char_move == 2:
-        char_y += 3
-    elif char_move == 3:
-        char_x -= 3
-    elif char_move == 4:
-        char_x += 3
+    # Executing Movement
+    if keys_down['w']: player.pos_y -= 5
+    if keys_down['s']: player.pos_y += 5
+    if keys_down['a']: player.pos_x -= 5
+    if keys_down['d']: player.pos_x += 5
 
     # Rendering
     game_display.fill(Color.White)
-    fps_overlay = fps_font.render((str(char_x) + ', ' + str(char_y)), True, Color.Goldenrod)
+    fps_overlay = fps_font.render((str(player.pos_x) + ', ' + str(player.pos_y)), True, Color.Goldenrod)
     game_display.blit(pygame.image.load(home), (0,0))
-    game_display.blit(pygame.image.load(player_sprite), (char_x, char_y))
+    game_display.blit(pygame.image.load(player_sprite), (player.pos_x, player.pos_y))
     game_display.blit(fps_overlay, (0,0))
 
 
@@ -116,6 +114,7 @@ while not gameExit:
 
     pygame.display.update()
     time.sleep(0.01666667)
+
 
 pygame.quit()
 quit()

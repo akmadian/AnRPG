@@ -16,6 +16,8 @@ class Player:
         self.obj_type = 'player'
         self.health = 100
         self.attack = 30
+        self.pos_x = 100
+        self.pos_y = 100
 
 
 class Enemy_Grunt:
