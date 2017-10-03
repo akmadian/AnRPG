@@ -1,4 +1,5 @@
 # by Timothy Downs, inputbox written for my map editor
+# Modified by Ari Madian for python 3.x and bad word filtering
 
 # This program needs a little cleaning up
 # It ignores the shift key
@@ -9,6 +10,9 @@
 # Called by:
 # import inputbox
 # answer = inputbox.ask(screen, "Your name")
+#
+# For bad word filtering, just modify the bad_words_file path to get
+#   your text file of choice.
 #
 # Only near the center of the screen is blitted to
 
@@ -21,7 +25,8 @@ import sys
 from pygame.locals import *
 
 
-bad_words_file = os.path.os.path.dirname(os.path.realpath(sys.argv[0])) + '/bad_words.txt'
+bad_words_file = os.path.os.path.dirname(os.path.realpath(sys.argv[0])) \
+                 + '/bad_words.txt'
 
 def get_key():
     while 1:
@@ -59,16 +64,10 @@ def ask(screen, question):
         if inkey == K_BACKSPACE:
             current_string = current_string[0:-1]
         elif inkey == K_RETURN:
-            file = open(bad_words_file, 'r')
-            f = file.readlines()
-            bad_list = []
-            for thing in f:
-                bad_list.append(thing[:-1])
-            print(bad_list)
-            if "".join(current_string) in bad_list:
-                print('bad')
+            file = open(bad_words_file, 'r').readlines()
+            if "".join(current_string) in [thing[:-1] for thing in file]:
+                current_string = []
             else:
-                print('ok')
                 break
         elif inkey == K_MINUS:
             current_string.append("_")

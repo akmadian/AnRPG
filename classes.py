@@ -13,8 +13,6 @@ class Player:
 
     def __init__(self):
         self.player_name = None
-        self.sprite = os.path.os.path.dirname(os.path.realpath(sys.argv[0])) \
-                      + '/Textures/' + '/player_sprite.png'
         self.obj_type = 'player'
         self.health = 100
         self.attack = 30
@@ -22,6 +20,13 @@ class Player:
 
 class Enemy_Grunt:
     """The basic Enemy Type"""
+
+    def __init__(self, enemy_name):
+        self.boss_name = enemy_name
+        self.obj_type = 'enemy'
+        self.sprite_type = 'enemy_grunt'
+        self.health = 75
+        self.attack = 15
 
 
 class Enemy_Boss:
@@ -32,5 +37,6 @@ class Enemy_Boss:
         self.obj_type = 'enemy'
         self.sprite_type = 'enemy_boss'
         self.health = 500
+        self.attack = 20
 
 

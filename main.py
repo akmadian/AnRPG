@@ -16,7 +16,7 @@ import inputbox
 from colors_file import Color
 
 
-#TODO: Block bad words for player name input
+#TODO: Fix multiple keydown issue
 
 x = pygame.init()
 player = classes.Player
