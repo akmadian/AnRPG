@@ -19,6 +19,13 @@ class Player:
         self.pos_x = 100
         self.pos_y = 100
 
+class Projectile:
+
+    def __init__(self, origin, mousepos):
+        self.origin = origin
+        self.mousepos = mousepos
+        self.roation = None
+        self.imagename = None
 
 class Enemy_Grunt:
     """The basic Enemy Type"""
