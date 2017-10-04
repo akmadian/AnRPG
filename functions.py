@@ -2,7 +2,7 @@
 """
     File Name: functions.py
     Author: Ari Madian
-    Created: October 1, 2017 5:17 PM
+    Created: October 4, 2017 3:30 PM
     Python Version: 3.6
 """
 
@@ -15,16 +15,16 @@ def player_verts(image_path, player_pos):
     size = image.get_rect().size
 
     verts = {'tl': player_pos,
-             'tm': [int(player_pos[0] + (size[0] / 2)), int(player_pos[1])],
-             'tr': [int(player_pos[0] + size[0]), int(player_pos[1])],
+             'tm': (int(player_pos[0] + (size[0] / 2)), int(player_pos[1])),
+             'tr': (int(player_pos[0] + size[0]), int(player_pos[1])),
 
-             'cl': [int(player_pos[0]), int(player_pos[1] + (size[1] / 2))],
-             'cm': [int(player_pos[0] + (size[0] / 2)), int(player_pos[1] + (size[1] / 2))],
-             'cr': [int(player_pos[0] + size[0]), int(player_pos[1] + (size[1] / 2))],
+             'cl': (int(player_pos[0]), int(player_pos[1] + (size[1] / 2))),
+             'cm': (int(player_pos[0] + (size[0] / 2)), int(player_pos[1] + (size[1] / 2))),
+             'cr': (int(player_pos[0] + size[0]), int(player_pos[1] + (size[1] / 2))),
 
-             'bl': [int(player_pos[0]), int(player_pos[1] + size[1])],
-             'bm': [int(player_pos[0] + (size[0] / 2)), int(player_pos[1] + size[1])],
-             'br': [int(player_pos[0] + size[0]), int(player_pos[1] + size[1])]}
+             'bl': (int(player_pos[0]), int(player_pos[1] + size[1])),
+             'bm': (int(player_pos[0] + (size[0] / 2)), int(player_pos[1] + size[1])),
+             'br': (int(player_pos[0] + size[0]), int(player_pos[1] + size[1]))}
     return verts
 
 

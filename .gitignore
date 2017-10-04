@@ -1,6 +1,6 @@
 __pycache__/
 .idea/
-*.DS_Store
+.DS_Store
 *.xml
 gameconfig.ini
 gameconfig.xml
