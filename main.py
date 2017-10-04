@@ -13,6 +13,7 @@ import time
 
 # Game Resources
 import classes
+import functions
 import inputbox
 from colors_file import Color
 
@@ -20,11 +21,9 @@ from colors_file import Color
 #TODO: Blit a portion of an image so all related sprites can be in one image
 #TODO: Projectiles with asyncio
 #TODO: Config file implementation?
+#TODO: Change projectile sprite to a circle to avoid dealing with the rotation stuff
 
 x = pygame.init()
-player = classes.Player
-player.pos_x = 100
-player.pos_y =100
 
 base_path = os.path.os.path.dirname(os.path.realpath(sys.argv[0]))
 textures_base_path = base_path + '/Textures/'
@@ -37,6 +36,11 @@ home = textures_base_path + 'Built-Textures/home_area_fixed.png'
 player_sprite = textures_base_path + '/player_sprite.png'
 player_sprite_reversed = textures_base_path + '/player_sprite_reversed.png'
 
+
+player = classes.Player
+player.pos_x = 100
+player.pos_y = 100
+
 window_width = 1200
 window_height = 800
 window_title = 'RPG Game'
@@ -46,6 +50,7 @@ game_display = pygame.display.set_mode((window_width, window_height),
 keys_down = {'w': None, 'a': None, 's': None, 'd': None}
 active_projectiles = []
 player_facing = None
+ticks = 0
 
 
 
@@ -76,39 +81,16 @@ def title_screen():
 
         pygame.display.update()
         frames += 1
-        time.sleep(0.01666667)
+        time.sleep(0.013)
 
-
-def projectile_rotation(origin, mousepos):
-    """Calculates the rotation of a projectile object
-    I'll probably make this based on math stuff at some point
-
-    :param origin: Expects dict with the character postion at
-                    the time of projectile creation
-    :param mousepos: Expects dict with the mouse position at
-                     the time of projectile creation
-    :return: Degree rotation
-    """
-    # Vertical/ Horizontal Angles
-    if origin['y'] == mousepos['y']:
-        if origin['x'] < mousepos['x']: return '0'
-        if origin['x'] > mousepos['x']: return '180'
-    if origin['x'] == mousepos['x']:
-        if origin['y'] < mousepos['y']: return '270'
-        if origin['y'] > mousepos['y']: return '90'
-
-    # Diagonal Angles
-    if origin['x'] < mousepos['x']: # If mouse is to the right of player
-        if origin['y'] < mousepos['y']: return '315'
-        if origin['y'] > mousepos['y']: return '45'
-    if origin['x'] > mousepos['x']: # If mouse is to the left of player
-        if origin['y'] < mousepos['y']: return '225'
-        if origin['y'] > mousepos['y']: return '135'
 
 
 title_screen()
 gameExit = False
 while not gameExit:
+    ticks += 1
+    print(ticks)
+    player.img_verts = functions.player_verts(player_sprite, (player.pos_x, player.pos_y))
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             gameExit = True
@@ -132,7 +114,7 @@ while not gameExit:
             print(dict(zip(('x', 'y'), event.pos)))
             projectile = classes.Projectile(dict(zip(('x', 'y'), (player.pos_x, player.pos_y))),
                                             dict(zip(('x', 'y'), event.pos)))
-            projectile.roation = projectile_rotation(projectile.origin, projectile.mousepos)
+            projectile.roation = functions.projectile_rotation(projectile.origin, projectile.mousepos)
             projectile.imagename = '/projectile_fire_' + projectile.roation + '.png'
             active_projectiles.append(projectile)
 
@@ -148,9 +130,16 @@ while not gameExit:
     if keys_down['d']: player.pos_x += 5
 
     ## Rendering
-    fps_overlay = fps_font.render((str(player.pos_x) + ', ' + str(player.pos_y)), True, Color.Goldenrod)
+    player_pos = fps_font.render((str(player.pos_x) + ', ' + str(player.pos_y)), True, Color.Goldenrod)
+    ticks_text = fps_font.render(('Ticks: ' + str(ticks)), True, Color.Goldenrod)
     game_display.blit(pygame.image.load(home), (0,0))
-    game_display.blit(fps_overlay, (0,0))
+    game_display.blit(player_pos, (0,0))
+    game_display.blit(ticks_text, (0, 25))
+
+    ''' # To monitor player verts
+    for _, coords in player.img_verts.items():
+        pygame.draw.circle(game_display, Color.Goldenrod, coords, 10)
+    '''
 
     if player_facing == 'right':
         game_display.blit(pygame.image.load(player_sprite), (player.pos_x, player.pos_y))
@@ -163,7 +152,7 @@ while not gameExit:
                               (projectile.mousepos['x'], projectile.mousepos['y']))
 
     pygame.display.update()
-    time.sleep(0.01666667)
+    time.sleep(0.013)
 
 
 pygame.quit()

@@ -7,6 +7,7 @@
 """
 import sys
 import os
+import pygame.image
 
 class Player:
     """The player class"""
@@ -18,14 +19,18 @@ class Player:
         self.attack = 30
         self.pos_x = 100
         self.pos_y = 100
+        self.img_verts = None
+
 
 class Projectile:
+    """Projectile class"""
 
     def __init__(self, origin, mousepos):
         self.origin = origin
         self.mousepos = mousepos
         self.roation = None
         self.imagename = None
+
 
 class Enemy_Grunt:
     """The basic Enemy Type"""
