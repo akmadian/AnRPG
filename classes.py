@@ -5,9 +5,6 @@
     Created: October 1, 2017 5:17 PM
     Python Version: 3.6
 """
-import sys
-import os
-import pygame.image
 
 class Player:
     """The player class"""
@@ -25,11 +22,13 @@ class Player:
 class Projectile:
     """Projectile class"""
 
-    def __init__(self, origin, mousepos):
+    def __init__(self, origin, mousepos, tick):
         self.origin = origin
         self.mousepos = mousepos
-        self.roation = None
+        self.angle = None
         self.imagename = None
+        self.tickmade = tick
+        self.pos = None
 
 
 class Enemy_Grunt:
