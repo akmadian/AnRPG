@@ -5,14 +5,11 @@
     Created: October 4, 2017 3:30 PM
     Python Version: 3.6
 """
+import math
+import numpy
 
-import pygame
-
-
-def player_verts(image_path, player_pos):
+def player_verts(player_pos, size):
     """Calulates the vertices of the player sprite"""
-    image = pygame.image.load(image_path)
-    size = image.get_rect().size
 
     verts = {'tl': player_pos,
              'tm': (int(player_pos[0] + (size[0] / 2)), int(player_pos[1])),
@@ -28,7 +25,47 @@ def player_verts(image_path, player_pos):
     return verts
 
 
+def projectile_angle(origin, mousepos):
+    """"""
+    side_lengths = numpy.subtract(mousepos, origin)
+    degree = math.degrees(math.atan(side_lengths[0] / side_lengths[1]))
+    abs_value = math.fabs(degree)
+    if origin[0] < mousepos[0]:
+        if origin[1] > mousepos[1]:
+            return abs_value
+        else:
+            return 270 + abs_value
+    if origin[0] > mousepos[0]:
+        if origin[1] > mousepos[1]:
+            return 90 + abs_value
+        else:
+            return 180 + abs_value
 
+
+def projectile_position(proj_obj, curr_tick):
+    """"""
+    angle = proj_obj.angle
+    ticks = curr_tick - proj_obj.tickmade
+
+
+    vertical = math.sin(angle) * ticks
+    horizontal = math.cos(angle) * ticks
+
+    if proj_obj.mousepos['x'] > proj_obj.origin['x']:
+        if proj_obj.mousepos['y'] > proj_obj.origin['y']:
+            return vertical + proj_obj.origin['y'], horizontal + proj_obj.origin['x']
+        else:
+            return vertical - proj_obj.origin['y'], horizontal + proj_obj.origin['x']
+    else:
+        if proj_obj.mousepos['y'] > proj_obj.origin['y']:
+            return vertical + proj_obj.origin['y'], horizontal - proj_obj.origin['x']
+        else:
+            return vertical - proj_obj.origin['y'], horizontal - proj_obj.origin['x']
+
+
+
+
+'''
 def projectile_rotation(origin, mousepos):
     """Calculates the rotation of a projectile object
     I'll probably make this based on math stuff at some point
@@ -54,5 +91,6 @@ def projectile_rotation(origin, mousepos):
     if origin['x'] > mousepos['x']: # If mouse is to the left of player
         if origin['y'] < mousepos['y']: return '225'
         if origin['y'] > mousepos['y']: return '135'
+'''
 
-
+if __name__ == '__main__': projectile_position(None, 225, 50)

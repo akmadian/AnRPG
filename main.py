@@ -35,11 +35,9 @@ fps_font = pygame.font.Font(fonts_path + 'roboto/Roboto-Light.ttf', 20)
 home = textures_base_path + 'Built-Textures/home_area_fixed.png'
 player_sprite = textures_base_path + '/player_sprite.png'
 player_sprite_reversed = textures_base_path + '/player_sprite_reversed.png'
+image = pygame.image.load(player_sprite)
+image_size = image.get_rect().size
 
-
-player = classes.Player
-player.pos_x = 100
-player.pos_y = 100
 
 window_width = 1200
 window_height = 800
@@ -51,12 +49,13 @@ keys_down = {'w': None, 'a': None, 's': None, 'd': None}
 active_projectiles = []
 player_facing = None
 ticks = 0
-
+player = classes.Player
+player.pos_x = 100
+player.pos_y = 100
+player.player_name = inputbox.ask(game_display, "Player Name")
 
 
 def title_screen():
-    player.player_name = inputbox.ask(game_display, "Player Name")
-    print(player.player_name)
     background = textures_base_path + '/title_screen.jpg'
     font_size = 0
     frames = 0
@@ -89,8 +88,7 @@ title_screen()
 gameExit = False
 while not gameExit:
     ticks += 1
-    print(ticks)
-    player.img_verts = functions.player_verts(player_sprite, (player.pos_x, player.pos_y))
+    player.img_verts = functions.player_verts((player.pos_x, player.pos_y), image_size)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             gameExit = True
@@ -113,10 +111,18 @@ while not gameExit:
             print(dict(zip(('x', 'y'), (player.pos_x, player.pos_y))))
             print(dict(zip(('x', 'y'), event.pos)))
             projectile = classes.Projectile(dict(zip(('x', 'y'), (player.pos_x, player.pos_y))),
-                                            dict(zip(('x', 'y'), event.pos)))
-            projectile.roation = functions.projectile_rotation(projectile.origin, projectile.mousepos)
-            projectile.imagename = '/projectile_fire_' + projectile.roation + '.png'
+                                            dict(zip(('x', 'y'), event.pos)),
+                                            ticks)
+            projectile.imagename = '/projectile_fire_0.png'
+            projectile.angle = functions.projectile_angle((player.pos_x, player.pos_y), event.pos)
             active_projectiles.append(projectile)
+
+            '''
+            print('Angle: ' + str(projectile.angle))
+            print('Origin: ' + str((player.pos_x, player.pos_y)))
+            print('End: ' + str(event.pos))
+            '''
+
 
         # Player Facing
         if event.type == pygame.MOUSEMOTION:
@@ -129,12 +135,20 @@ while not gameExit:
     if keys_down['a']: player.pos_x -= 5
     if keys_down['d']: player.pos_x += 5
 
+
+    for projectile in active_projectiles:
+        if (ticks - projectile.tickmade) > 150:
+            del active_projectiles[active_projectiles.index(projectile)]
+        projectile.pos = functions.projectile_position(projectile, ticks)
+
     ## Rendering
-    player_pos = fps_font.render((str(player.pos_x) + ', ' + str(player.pos_y)), True, Color.Goldenrod)
     ticks_text = fps_font.render(('Ticks: ' + str(ticks)), True, Color.Goldenrod)
+    name_text = fps_font.render(player.player_name, True, Color.Goldenrod)
+    player_pos = fps_font.render((str(player.pos_x) + ', ' + str(player.pos_y)), True, Color.Goldenrod)
     game_display.blit(pygame.image.load(home), (0,0))
-    game_display.blit(player_pos, (0,0))
     game_display.blit(ticks_text, (0, 25))
+    game_display.blit(player_pos, (0, 0))
+    game_display.blit(name_text, (player.img_verts['tm'][0], player.img_verts['tm'][1] - 25))
 
     ''' # To monitor player verts
     for _, coords in player.img_verts.items():
@@ -149,10 +163,10 @@ while not gameExit:
     if len(active_projectiles) != 0:
         for projectile in active_projectiles:
             game_display.blit(pygame.image.load(projectile_fire_path + projectile.imagename),
-                              (projectile.mousepos['x'], projectile.mousepos['y']))
+                              (projectile.pos[0], projectile.pos[1]))
 
     pygame.display.update()
-    time.sleep(0.013)
+    # time.sleep(0.01)
 
 
 pygame.quit()
