@@ -20,12 +20,12 @@ import pygame
 import pygame.font
 import pygame.event
 import pygame.draw
-import os
-import sys
+from os import path
+from sys import argv
 from pygame.locals import *
 
 
-bad_words_file = os.path.os.path.dirname(os.path.realpath(sys.argv[0])) \
+bad_words_file = path.os.path.dirname(path.realpath(argv[0])) \
                  + '/bad_words.txt'
 
 def get_key():

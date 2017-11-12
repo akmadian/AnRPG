@@ -5,8 +5,7 @@
     Created: October 4, 2017 3:30 PM
     Python Version: 3.6
 """
-import math
-import numpy
+from math import sin, cos, atan2, pi
 
 def player_verts(player_pos, size):
     """Calulates the vertices of the player sprite"""
@@ -25,68 +24,22 @@ def player_verts(player_pos, size):
     return verts
 
 
-def projectile_angle(origin, mousepos):
-    """"""
-    side_lengths = numpy.subtract(mousepos, origin)
-    degree = math.degrees(math.atan(side_lengths[0] / side_lengths[1]))
-    abs_value = math.fabs(degree)
-    if origin[0] < mousepos[0]:
-        if origin[1] > mousepos[1]: return abs_value
-        else: return 270 + abs_value
-    if origin[0] > mousepos[0]:
-        if origin[1] > mousepos[1]: return 90 + abs_value
-        else: return 180 + abs_value
 
-
-def projectile_position(proj_obj, curr_tick):
-    """"""
-    angle = proj_obj.angle
-    ticks = curr_tick - proj_obj.tickmade
-
-
-    vertical = math.sin(angle) * ticks
-    horizontal = math.cos(angle) * ticks
-
-    if proj_obj.mousepos['x'] > proj_obj.origin['x']:
-        if proj_obj.mousepos['y'] > proj_obj.origin['y']:
-            return vertical + proj_obj.origin['y'], horizontal + proj_obj.origin['x']
-        else:
-            return vertical - proj_obj.origin['y'], horizontal + proj_obj.origin['x']
-    else:
-        if proj_obj.mousepos['y'] > proj_obj.origin['y']:
-            return vertical + proj_obj.origin['y'], horizontal - proj_obj.origin['x']
-        else:
-            return vertical - proj_obj.origin['y'], horizontal - proj_obj.origin['x']
-
-
-
-
-'''
-def projectile_rotation(origin, mousepos):
-    """Calculates the rotation of a projectile object
-    I'll probably make this based on math stuff at some point
-
-    :param origin: Expects dict with the character postion at
-                    the time of projectile creation
-    :param mousepos: Expects dict with the mouse position at
-                     the time of projectile creation
-    :return: Degree rotation
+def get_angle(origin, destination):
+    """Returns angle in radians from origin to destination.
+    This is the angle that you would get if the points were
+    on a cartesian grid. Arguments of (0,0), (1, -1)
+    return .25pi(45 deg) rather than 1.75pi(315 deg).
     """
-    # Vertical/ Horizontal Angles
-    if origin['y'] + 103 == mousepos['y']:
-        if origin['x'] < mousepos['x']: return '0'
-        if origin['x'] > mousepos['x']: return '180'
-    if origin['x'] + 56 == mousepos['x']:
-        if origin['y'] < mousepos['y']: return '270'
-        if origin['y'] > mousepos['y']: return '90'
+    x_dist = destination[0] - origin[0]
+    y_dist = destination[1] - origin[1]
+    return atan2(-y_dist, x_dist) % (2 * pi)
 
-    # Diagonal Angles
-    if origin['x'] < mousepos['x']: # If mouse is to the right of player
-        if origin['y'] < mousepos['y']: return '315'
-        if origin['y'] > mousepos['y']: return '45'
-    if origin['x'] > mousepos['x']: # If mouse is to the left of player
-        if origin['y'] < mousepos['y']: return '225'
-        if origin['y'] > mousepos['y']: return '135'
-'''
+def project(pos, angle, distance):
+    """Returns tuple of pos projected distance at angle
+    adjusted for pygame's y-axis.
+    """
+    return (pos[0] + (cos(angle) * distance),
+            pos[1] - (sin(angle) * distance))
 
-if __name__ == '__main__': projectile_position(None, 225, 50)
+

@@ -30,6 +30,12 @@ class Projectile:
         self.tickmade = tick
         self.pos = None
 
+    def is_collided_with(self, sprite):
+        return self..colliderect(sprite.rect)
+
+    def kill(self):
+
+
 
 class Enemy_Grunt:
     """The basic Enemy Type"""
