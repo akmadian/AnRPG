@@ -31,15 +31,11 @@ def projectile_angle(origin, mousepos):
     degree = math.degrees(math.atan(side_lengths[0] / side_lengths[1]))
     abs_value = math.fabs(degree)
     if origin[0] < mousepos[0]:
-        if origin[1] > mousepos[1]:
-            return abs_value
-        else:
-            return 270 + abs_value
+        if origin[1] > mousepos[1]: return abs_value
+        else: return 270 + abs_value
     if origin[0] > mousepos[0]:
-        if origin[1] > mousepos[1]:
-            return 90 + abs_value
-        else:
-            return 180 + abs_value
+        if origin[1] > mousepos[1]: return 90 + abs_value
+        else: return 180 + abs_value
 
 
 def projectile_position(proj_obj, curr_tick):

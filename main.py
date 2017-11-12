@@ -26,15 +26,15 @@ from colors_file import Color
 x = pygame.init()
 
 base_path = os.path.os.path.dirname(os.path.realpath(sys.argv[0]))
-textures_base_path = base_path + '/Textures/'
+assets_base_path = base_path + '/Assets/'
 fonts_path = base_path + '/Fonts/'
-projectile_path = textures_base_path + '/projectiles'
-projectile_fire_path = textures_base_path + '/Projectiles/Fire'
+projectile_path = assets_base_path + '/projectiles'
+projectile_color_path = assets_base_path + '/Projectiles/BAR'
 
-fps_font = pygame.font.Font(fonts_path + 'roboto/Roboto-Light.ttf', 20)
-home = textures_base_path + 'Built-Textures/home_area_fixed.png'
-player_sprite = textures_base_path + '/player_sprite.png'
-player_sprite_reversed = textures_base_path + '/player_sprite_reversed.png'
+fps_font = pygame.font.Font(fonts_path + 'Futura.ttf', 20)
+home = assets_base_path + '/home_area_beige.jpg'
+player_sprite = assets_base_path + '/player_sprite.png'
+player_sprite_reversed = assets_base_path + '/player_sprite_reversed.png'
 image = pygame.image.load(player_sprite)
 image_size = image.get_rect().size
 
@@ -52,11 +52,11 @@ ticks = 0
 player = classes.Player
 player.pos_x = 100
 player.pos_y = 100
-player.player_name = inputbox.ask(game_display, "Player Name")
+player.player_name = inputbox.ask(game_display, "Enter Player Name", fps_font)
 
 
 def title_screen():
-    background = textures_base_path + '/title_screen.jpg'
+    background = assets_base_path + 'title_screen.jpg'
     font_size = 0
     frames = 0
     enter_game = False
@@ -70,13 +70,13 @@ def title_screen():
             # print(event_)
 
         game_display.blit(pygame.image.load(background), (0, 0))
-        font = pygame.font.Font(fonts_path + 'roboto/Roboto-Light.ttf', font_size)
-        game_display.blit(font.render(str('An RPG'), True, Color.Goldenrod), (500, 111))
-        game_display.blit(font.render(str(frames), True, Color.Goldenrod), (0, 0))
+        font = pygame.font.Font(fonts_path + 'Futura.ttf', font_size)
+        game_display.blit(font.render(str('An RPG'), True, Color.Black), (500, 111))
+        # game_display.blit(font.render(str(frames), True, Color.Goldenrod), (0, 0))
 
         if font_size < 65: font_size += 1
         if font_size == 65:
-            game_display.blit(font.render(str('Press Enter To Play'), True, Color.Goldenrod), (345, 400))
+            game_display.blit(font.render(str('Press Enter To Play'), True, Color.Black), (345, 400))
 
         pygame.display.update()
         frames += 1
@@ -108,13 +108,16 @@ while not gameExit:
         ## Projectiles and Targeting
         # Making the projectile
         if event.type == pygame.MOUSEBUTTONDOWN:
-            print(dict(zip(('x', 'y'), (player.pos_x, player.pos_y))))
-            print(dict(zip(('x', 'y'), event.pos)))
-            projectile = classes.Projectile(dict(zip(('x', 'y'), (player.pos_x, player.pos_y))),
+            # print(dict(zip(('x', 'y'), (player.pos_x, player.pos_y))))
+            # print(dict(zip(('x', 'y'), event.pos)))
+            projectile = classes.Projectile(dict(zip(('x', 'y'), (player.img_verts['cm'][0],
+                                                                  player.img_verts['cm'][1]))),
                                             dict(zip(('x', 'y'), event.pos)),
                                             ticks)
-            projectile.imagename = '/projectile_fire_0.png'
-            projectile.angle = functions.projectile_angle((player.pos_x, player.pos_y), event.pos)
+            projectile.imagename = '/blue_projectile.png'
+            projectile.angle = functions.projectile_angle((player.img_verts['cm'][0],
+                                                           player.img_verts['cm'][1]),
+                                                           event.pos)
             active_projectiles.append(projectile)
 
             '''
@@ -141,10 +144,12 @@ while not gameExit:
             del active_projectiles[active_projectiles.index(projectile)]
         projectile.pos = functions.projectile_position(projectile, ticks)
 
+    print(len(active_projectiles))
+
     ## Rendering
-    ticks_text = fps_font.render(('Ticks: ' + str(ticks)), True, Color.Goldenrod)
-    name_text = fps_font.render(player.player_name, True, Color.Goldenrod)
-    player_pos = fps_font.render((str(player.pos_x) + ', ' + str(player.pos_y)), True, Color.Goldenrod)
+    ticks_text = fps_font.render(('Ticks: ' + str(ticks)), True, Color.Black)
+    name_text = fps_font.render(player.player_name, True, Color.Black)
+    player_pos = fps_font.render((str(player.pos_x) + ', ' + str(player.pos_y)), True, Color.Black)
     game_display.blit(pygame.image.load(home), (0,0))
     game_display.blit(ticks_text, (0, 25))
     game_display.blit(player_pos, (0, 0))
@@ -162,7 +167,7 @@ while not gameExit:
 
     if len(active_projectiles) != 0:
         for projectile in active_projectiles:
-            game_display.blit(pygame.image.load(projectile_fire_path + projectile.imagename),
+            game_display.blit(pygame.image.load(projectile_color_path + projectile.imagename),
                               (projectile.pos[0], projectile.pos[1]))
 
     pygame.display.update()
