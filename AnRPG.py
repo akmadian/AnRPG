@@ -11,6 +11,7 @@ from os import path
 from time import sleep, time
 from sys import argv
 from datetime import datetime
+from random import randint, choice
 
 # Proprietary Resources
 import functions
@@ -30,20 +31,21 @@ projectiles_path       = assets_base_path + '/projectiles'
 projectile             = projectiles_path + '/blue_projectile.png'
 font_base              = pygame.font.Font(fonts_path + 'Futura.ttf', 20)
 home                   = assets_base_path + '/home_area_beige.jpg'
-player_sprite          = assets_base_path + '/player_sprite.png'
-player_sprite_reversed = assets_base_path + '/player_sprite_reversed.png'
+player_sprite          = assets_base_path + 'player_sprite.tiff'
+player_sprite_reversed = assets_base_path + 'player_sprite_reversed.tiff'
 enemy_sprite           = assets_base_path + '/enemy_sprite.png'
 enemy_sprite_reversed  = assets_base_path + '/enemy_sprite_reversed.png'
-sprite_mine            = projectiles_path + '/mine.png'
+sprite_bad_thing       = projectiles_path + '/mine.png'
+health_pack            = assets_base_path + '/healthpack.gif'
 player_sprite_image    = pygame.image.load(player_sprite)
 projectile_image       = pygame.image.load(projectile)
 home_image             = pygame.image.load(home)
-mine_image             = pygame.image.load(sprite_mine)
+bad_thing_image        = pygame.image.load(sprite_bad_thing)
 enemy_sprite_image     = pygame.image.load(enemy_sprite)
+health_pack_image      = pygame.image.load(health_pack)
 image_size             = player_sprite_image.get_rect().size
 print(image_size)
 window_title           = 'RPG Game'
-# clock                  = pygame.time.Clock()
 
 class Projectile(pygame.sprite.Sprite):
     """Projectile class
@@ -76,7 +78,10 @@ class Projectile(pygame.sprite.Sprite):
         self.rect.center = self.pos
 
     def blit(self):
-        game_display.blit(projectile_image, (self.pos[0], self.pos[1]))
+        if self.type == 'friendly':
+            game_display.blit(projectile_image, (self.pos[0], self.pos[1]))
+        elif self.type == 'enemy':
+            game_display.blit(bad_thing_image, (self.pos[0], self.pos[1]))
 
     def collided_with(self, sprite_rect):
         return self.rect.colliderect(sprite_rect)
@@ -99,12 +104,12 @@ class Player(pygame.sprite.Sprite):
         self.facing = None
         self.type = 'friendly'
         self.img_size = player_sprite_image.get_rect().size
-        self.rect = pygame.Rect((self.x, self.y),
-                                (self.img_size[0], self.img_size[1]))
+        self.rect = pygame.Rect((self.x, self.y + 92),
+                                (self.img_size[0], self.img_size[1] - 92))
 
     def refresh_rect(self):
-        self.rect = pygame.Rect((self.x, self.y),
-                                (self.img_size[0], self.img_size[1]))
+        self.rect = pygame.Rect((self.x, self.y + 92),
+                                (self.img_size[0], self.img_size[1] - 92))
 
     def blit_facing(self):
         if self.facing == 'right':
@@ -129,7 +134,7 @@ class Mine(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
-        self.image = pygame.image.load(sprite_mine)
+        self.image = pygame.image.load(sprite_bad_thing)
         self.rect = pygame.Rect((self.x, self.y), (32, 32))
 
     def blit(self):
@@ -151,6 +156,7 @@ class SmallEnemy(pygame.sprite.Sprite):
 
     health = config.small_enemy_health
     damage = config.small_enemy_damage
+    step = 0
 
     def __init__(self, x, y, tick):
         pygame.sprite.Sprite.__init__(self)
@@ -165,12 +171,42 @@ class SmallEnemy(pygame.sprite.Sprite):
         self.last_attack = tick
 
     def attack(self):
-        print('attack started')
-        projectile_ = Projectile((self.x, self.y), (player.x, player.y), ticks, 'enemy')
+        projectile_ = Projectile((self.x, self.y),
+                                 (player.img_verts['cm'][0], player.img_verts['cm'][1]),
+                                 ticks, 'enemy')
         active_projectiles.append(projectile_)
 
     def blit_facing(self):
-        game_display.blit(pygame.image.load(enemy_sprite), (self.x, self.y))
+        if self.facing == 'right':
+            game_display.blit(pygame.image.load(enemy_sprite), (self.x, self.y))
+        elif self.facing == 'left':
+            game_display.blit(pygame.image.load(enemy_sprite_reversed), (self.x, self.y))
+
+
+    def blit_health(self):
+        game_display.blit(font_base.render('Health - ' + str(self.health), True, Color.Black),
+                          (self.x + 10, self.y - 30))
+
+
+    def move(self):
+        if self.step >= config.enemy_small_tickstomove:
+            add_or_sub = ('+', '-')
+            if choice(add_or_sub) == '+':
+                self.x += randint(config.enemy_small_movex_min, config.enemy_small_movex_max)
+            else:
+                self.x -= randint(config.enemy_small_movex_min, config.enemy_small_movex_max)
+
+            if choice(add_or_sub) == '+':
+                self.y += randint(config.enemy_small_movey_min, config.enemy_small_movey_max)
+            else:
+                self.y -= randint(config.enemy_small_movey_min, config.enemy_small_movey_max)
+            self.step = 0
+            self.update_rect()
+        self.step += 1
+
+    def update_rect(self):
+        self.rect = pygame.Rect((self.x, self.y),
+                                (200, 119))
 
     def kill(self):
         del active_enemies[active_enemies.index(self)]
@@ -186,6 +222,13 @@ class HealthPack(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
+        self.rect = pygame.Rect((self.x, self.y), (46, 31))
+
+    def collided_with(self, sprite_rect):
+        return self.rect.colliderect(sprite_rect)
+
+    def blit(self):
+        game_display.blit(health_pack_image, (self.x, self.y))
 
     def heal(self):
         player.health += config.healthpack_heal_amount
@@ -208,6 +251,10 @@ active_health_packs  = []
 ticks = 0
 enemy = SmallEnemy(900, 600, ticks)
 active_enemies.append(enemy)
+
+pack = HealthPack(500, 400)
+active_health_packs.append(pack)
+
 player = Player()
 player.rect = pygame.image.load(player_sprite).get_rect()
 player.player_name = inputbox.ask(game_display, "Enter Player Name", font_base)
@@ -246,7 +293,7 @@ def death_screen():
 
 
 def title_screen():
-    background = assets_base_path + 'title_screen.jpg'
+    background = assets_base_path + 'title_screen.png'
     font_size = 0
     frames = 0
     enter_game = False
@@ -279,6 +326,8 @@ while not gameExit:
     tick_start_time = datetime.now()
     ticks += 1
     player.img_verts = functions.player_verts((player.x, player.y), image_size)
+
+    ## ON EVENT
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             gameExit = True
@@ -314,7 +363,6 @@ while not gameExit:
             if event.pos[0] > player.x: player.facing = 'right'
             else: player.facing = 'left'
 
-
     ## ENEMY ACTIONS
     for enemy in active_enemies:
         if ticks - enemy.last_attack >= config.small_enemy_attack_freq:
@@ -324,7 +372,12 @@ while not gameExit:
         if enemy.health <= 0:
             enemy.kill()
 
+        if player.x > enemy.x:
+            enemy.facing = 'right'
+        elif player.x < enemy.x:
+            enemy.facing = 'left'
 
+        enemy.move()
 
     ## MOVEMENT, COLLISION, AND FPS
     if active_keys['w']: player.y -= config.player_movespeed_vertical
@@ -332,9 +385,13 @@ while not gameExit:
     if active_keys['a']: player.x -= config.player_movespeed_horizontal
     if active_keys['d']: player.x += config.player_movespeed_horizontal
     player.refresh_rect()
+
+    # PROJECTILE COLLISION SCANNING
+    # PROJECTILES
     for projectile in active_projectiles:
         projectile.update()
-        if (ticks - projectile.tickmade) > config.projectile_lifespan:
+        if (ticks - projectile.tickmade) > config.projectile_lifespan or \
+                        projectile.pos == projectile.target:
             projectile.kill()
 
         if projectile.collided_with(player.rect):
@@ -350,14 +407,18 @@ while not gameExit:
                     enemy.health = enemy.health - config.player_damage
                 projectile.kill()
 
-
-
-
+    # MINES
     if len(active_mines) != 0:
         for mine in active_mines:
             if mine.collided_with():
                 player.health = player.health - mine.damage
                 mine.kill()
+
+    # HEALTHPACKS
+    if len(active_health_packs) != 0:
+        for pack in active_health_packs:
+            if pack.collided_with(player.rect):
+                pack.heal()
 
     end_t = time()
     time_taken = end_t - start_t
@@ -369,11 +430,11 @@ while not gameExit:
     ## Rendering
     fps_text        = font_base.render('FPS - ' + str(int(fps)), True, Color.Black)
     name_text       = font_base.render(player.player_name, True, Color.Black)
-    player_health   = font_base.render(str(player.health), True, Color.Black)
+    player_health   = font_base.render('Health - ' + str(player.health), True, Color.Black)
     game_display.blit(pygame.image.load(home), (0,0))
     game_display.blit(fps_text, (1130, 780))
     game_display.blit(player_health, (0, 0))
-    game_display.blit(name_text, (player.img_verts['tm'][0], player.img_verts['tm'][1] - 25))
+    game_display.blit(name_text, (player.img_verts['tm'][0] - 10, player.img_verts['tm'][1] - 25))
 
     player.blit_facing()
 
@@ -388,6 +449,11 @@ while not gameExit:
     if len(active_enemies) != 0:
         for enemy in active_enemies:
             enemy.blit_facing()
+            enemy.blit_health()
+
+    if len(active_health_packs) != 0:
+        for pack in active_health_packs:
+            pack.blit()
 
     # OPTIONAL, TO ENABLE, SEE CONFIG FILE SETTINGS
     # To monitor player verts
@@ -398,12 +464,13 @@ while not gameExit:
 
     pygame.display.update()
 
+    ''' For monitoring tick times and fps for performance eval
     tick_end_time = datetime.now()
     tick_time = tick_end_time - tick_start_time
     # print(str(tick_time) + ' fps - ' + str(fps))
     with open('tick_times.txt', 'a') as f:
         f.write(str(tick_time)[6:] + 'fps - %s' + '\n') %fps
-
+    '''
 
 pygame.quit()
 quit()

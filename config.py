@@ -5,7 +5,7 @@ AnRPG Config File
 
 ## Projectiles
 projectile_lifespan = 150
-projectile_speed    = 5
+projectile_speed    = 10
 
 ## Movement
 player_movespeed_vertical   = 13
@@ -30,7 +30,12 @@ player_godmode         = False
 healthpack_heal_amount = 20
 
 ## Enemies
-small_enemy_health      = 70
-small_enemy_damage      = 15
-small_enemy_attack_freq = 50
+small_enemy_health      = 150
+small_enemy_damage      = 20
+small_enemy_attack_freq = 35  # Lower to attack more often
+enemy_small_movex_min   = 5
+enemy_small_movex_max   = 12
+enemy_small_movey_min   = 5
+enemy_small_movey_max   = 12
+enemy_small_tickstomove = 2   # Number of ticks that pass between each movement
 
