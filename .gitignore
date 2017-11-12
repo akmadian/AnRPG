@@ -3,8 +3,7 @@ __pycache__/
 .DS_Store
 testing.py
 classes.py
-Assets/Possibles
-Assets/Built Textures
-Assets/Terrain
 bad_words.txt
 colors_file.py
+tick_times.txt
+Assets/gameclip.mp4
