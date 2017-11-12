@@ -1,7 +1,8 @@
 # AnRPG
 A small PyGame RPG I'm working on.
 
-Game Screenshot:
-![alt text](https://github.com/akmadian/AnRPG/blob/master/Textures/Game_Screenshot.png)
+Game Clip:
 
-Not many features so far but some, including combat and world scrolling, are planned.
+![](https://github.com/akmadian/AnRPG/blob/master/Assets/gameclip.gif)
+
+Not many features so far but some, including world scrolling, are planned.
