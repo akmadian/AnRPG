@@ -99,7 +99,7 @@ class Player(pygame.sprite.Sprite):
 
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.player_name = ''
+        self.player_name = None
         self.img_verts = None
         self.facing = None
         self.type = 'friendly'
@@ -257,7 +257,7 @@ active_health_packs.append(pack)
 
 player = Player()
 player.rect = pygame.image.load(player_sprite).get_rect()
-# player.player_name = inputbox.ask(game_display, "Enter Player Name", font_base)
+player.player_name = inputbox.ask(game_display, "Enter Player Name", font_base)
 
 frame_times = []
 start_t = time()
