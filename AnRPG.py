@@ -21,6 +21,8 @@ from colors_file import Color
 
 
 #TODO: Blit a portion of an image so all related sprites can be in one image
+#TODO: Source sprite spawn area ranges to config file
+#TODO: Fix caching
 
 pygame_init = pygame.init()
 
@@ -35,6 +37,8 @@ player_sprite          = assets_base_path + 'player_sprite.tiff'
 player_sprite_reversed = assets_base_path + 'player_sprite_reversed.tiff'
 enemy_sprite           = assets_base_path + '/enemy_sprite.png'
 enemy_sprite_reversed  = assets_base_path + '/enemy_sprite_reversed.png'
+enemy_sprite_boss      = assets_base_path + 'enemy_boss.png'
+enemy_sprite_boss_revd = assets_base_path + 'enemy_boss_reversed.png'
 sprite_bad_thing       = projectiles_path + '/mine.png'
 health_pack            = assets_base_path + '/healthpack.gif'
 player_sprite_image    = pygame.image.load(player_sprite)
@@ -42,10 +46,140 @@ projectile_image       = pygame.image.load(projectile)
 home_image             = pygame.image.load(home)
 bad_thing_image        = pygame.image.load(sprite_bad_thing)
 enemy_sprite_image     = pygame.image.load(enemy_sprite)
+enemy_boss_image       = pygame.image.load(enemy_sprite_boss)
 health_pack_image      = pygame.image.load(health_pack)
-image_size             = player_sprite_image.get_rect().size
-print(image_size)
+player_image_size      = player_sprite_image.get_rect().size
+enemy_boss_image_size  = enemy_boss_image.get_rect().size
+enemy_sprite_image_size = enemy_sprite_image.get_rect().size
+
+print(player_image_size)
+print(enemy_boss_image_size)
+print(enemy_sprite_image_size)
 window_title           = 'RPG Game'
+
+last_enemy_boss_death = 0
+last_enemy_small_death = 0
+last_healthpack_used = 0
+last_attackboost_used = 0
+active_enemies_small = 0
+active_enemies_boss  = 0
+active_healthpacks = 0
+active_dmgup = 0
+
+
+class Enemy(pygame.sprite.Sprite):
+
+    def __init__(self, x, y, tick, img_obj):
+        pygame.sprite.Sprite.__init__(self)
+        self.x = x
+        self.y = y
+        self.pos = (self.x, self.y)
+        self.facing = None
+        self.step = 0
+        self.last_attack = tick
+        self.img_size = img_obj.get_rect().size
+        self.rect = pygame.Rect(self.pos, self.img_size)
+
+    def attack(self, atk_type, atk_tup):
+        """Attacks the player
+
+        :param atk_type: Which attack the enemy should do.s
+        :param atk_tup: A tuple with the subclass's attack packages."""
+        projectile_ = Projectile(self.pos,
+                                 (player.img_verts['cm'][0], player.img_verts['cm'][1]),
+                                 ticks, 'enemy',
+                                 atk_tup[0] if atk_type == 1 else atk_tup[1])
+
+        active_projectiles.append(projectile_)
+        self.last_attack = ticks
+
+    def blit_facing(self, sprite_tup):
+        if self.facing == 'right':
+            game_display.blit(pygame.image.load(sprite_tup[0]), (self.x, self.y))
+        elif self.facing == 'left':
+            game_display.blit(pygame.image.load(sprite_tup[1]), (self.x, self.y))
+
+
+    def move(self, move_dict):
+        if self.step >= move_dict['ticks_to_move']:
+            add_or_sub = ('+', '-')
+            if choice(add_or_sub) == '+':
+                self.x += randint(move_dict['x']['min'], move_dict['x']['max'])
+            else:
+                self.x -= randint(move_dict['x']['min'], move_dict['x']['max'])
+
+            if choice(add_or_sub) == '+':
+                self.y += randint(move_dict['y']['min'], move_dict['y']['max'])
+            else:
+                self.y -= randint(move_dict['y']['min'], move_dict['y']['max'])
+            self.step = 0
+            self.update_rect()
+        self.step += 1
+
+    def update_rect(self):
+        self.rect = pygame.Rect(self.pos, self.img_size)
+
+    def do_kill(self, kill_dict):
+        if kill_dict['type'] == 'boss':
+            global last_enemy_boss_death
+            global active_enemies_boss
+            last_enemy_boss_death = ticks
+            active_enemies_small -= 1
+        else:
+            global last_enemy_small_death
+            global active_enemies_small
+            last_enemy_small_death = ticks
+            active_enemies_small -= 1
+        del active_enemies[active_enemies.index(self)]
+        player.score += kill_dict['score_val']
+
+    def blit_health(self, health):
+        game_display.blit(font_base.render('Health - ' + str(health), True, Color.Black),
+                          (self.x + 10, self.y - 30))
+class BossEnemy(Enemy):
+
+    def __init__(self, x, y, tick):
+        pygame.sprite.Sprite.__init__(self)
+        self.type        = 'enemy'
+        self.img_obj     = enemy_boss_image
+        self.health      = config.enemy_boss_health
+        self.atk_tup     = (config.enemy_boss_atk1, config.enemy_boss_atk2)
+        self.atks_dict   = {'atk1': {'freq': config.enemy_boss_atk1_freq,
+                                     'atk_pack': self.atk_tup[0],
+                                     'type': 1},
+                            'atk_2': {'freq': config.enemy_boss_atk2_freq,
+                                      'atk_pack': self.atk_tup[1],
+                                      'type': 2}}
+        self.sprite_tup  = (enemy_sprite_boss, enemy_sprite_boss_revd)
+        self.move_dict   = config.enemy_boss_move_properties
+        self.kill_dict   = {'score_val': config.enemy_boss_score_val,
+                            'type': 'boss'}
+        Enemy.__init__(self, x, y, tick, self.img_obj)
+class SmallEnemy(Enemy):
+    """The small enemy class
+
+    :param x: The x position for the enemy to be created at
+    :param y: The y position for the enemy to be created at
+    :param tick: The tick the enemy was created at"""
+
+    def __init__(self, x, y, tick):
+        pygame.sprite.Sprite.__init__(self)
+        self.type        = 'enemy'
+        self.img_obj     = enemy_sprite_image
+        self.health      = config.enemy_small_health
+        self.atk_tup     = (config.enemy_small_atk1, config.enemy_small_atk2)
+        self.atks_dict   = {'atk1': {'freq': config.enemy_small_atk1_freq,
+                                     'atk_pack': self.atk_tup[0],
+                                     'type': 1},
+                            'atk_2': {'freq': config.enemy_small_atk2_freq,
+                                      'atk_pack': self.atk_tup[1],
+                                      'type': 2}}
+        self.sprite_tup  = (enemy_sprite, enemy_sprite_reversed)
+        self.move_dict   = config.enemy_small_move_dict
+        self.kill_dict   = {'score_val': config.enemy_small_score_val,
+                            'type': 'small'}
+
+        Enemy.__init__(self, x, y, tick, self.img_obj)
 
 class Projectile(pygame.sprite.Sprite):
     """Projectile class
@@ -58,17 +192,16 @@ class Projectile(pygame.sprite.Sprite):
     :param tick: The tick the projectile was created at
     :param type_: The projectile type, either 'friendly' or 'enemy'"""
 
-    damage = config.player_damage
-    lifespan = config.projectile_lifespan
-    rect = projectile_image.get_rect()
-
-    def __init__(self, origin, target, tick, type_):
+    def __init__(self, origin, target, tick, type_, attack_package):
         pygame.sprite.Sprite.__init__(self)
         self.pos = origin
         self.type = type_
         self.target = target
+        self.atk_package = attack_package
+        self.damage = self.atk_package[0]
+        self.lifepsan = self.atk_package[2]
         self.angle = functions.get_angle(self.pos, self.target)
-        self.speed = config.projectile_speed
+        self.speed = self.atk_package[1]
         self.tickmade = tick
         self.rect = pygame.Rect((self.pos[0], self.pos[1]), (32, 32))
 
@@ -89,7 +222,6 @@ class Projectile(pygame.sprite.Sprite):
     def kill(self):
         del active_projectiles[active_projectiles.index(self)]
 
-
 class Player(pygame.sprite.Sprite):
     """The player class"""
 
@@ -102,6 +234,7 @@ class Player(pygame.sprite.Sprite):
         self.player_name = None
         self.img_verts = None
         self.facing = None
+        self.score = 0
         self.type = 'friendly'
         self.img_size = player_sprite_image.get_rect().size
         self.rect = pygame.Rect((self.x, self.y + 92),
@@ -111,6 +244,15 @@ class Player(pygame.sprite.Sprite):
         self.rect = pygame.Rect((self.x, self.y + 92),
                                 (self.img_size[0], self.img_size[1] - 92))
 
+    def attack(self, eventpos, atk_type):
+        projectile_ = Projectile((self.img_verts['cm'][0],
+                                 self.img_verts['cm'][1]),
+                                 eventpos,
+                                 ticks, 'friendly',
+                                 config.player_atk1 if atk_type == 1
+                                 else config.player_atk2)
+        active_projectiles.append(projectile_)
+
     def blit_facing(self):
         if self.facing == 'right':
             game_display.blit(pygame.image.load(player_sprite), (self.x, self.y))
@@ -119,7 +261,6 @@ class Player(pygame.sprite.Sprite):
 
     def kill(self):
         death_screen()
-
 
 class Mine(pygame.sprite.Sprite):
     """The mine class
@@ -146,75 +287,39 @@ class Mine(pygame.sprite.Sprite):
     def kill(self):
         del active_mines[active_mines.index(self)]
 
+class PowerUp(pygame.sprite.Sprite):
 
-class SmallEnemy(pygame.sprite.Sprite):
-    """The small enemy class
-
-    :param x: The x position for the enemy to be created at
-    :param y: The y position for the enemy to be created at
-    :param tick: The tick the enemy was created at"""
-
-    health = config.small_enemy_health
-    damage = config.small_enemy_damage
-    step = 0
-
-    def __init__(self, x, y, tick):
+    def __init__(self, x, y, tick, img_obj):
         pygame.sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
-        self.type = 'enemy'
-        self. name = 'Small Enemy'
-        self.facing = None
-        self.img_size = None
-        self.rect = pygame.Rect((self.x, self.y),
-                                (200, 119))
-        self.last_attack = tick
+        self.pos = (x, y)
+        self.img_obj = img_obj
+        self.tickmade = tick
+        self.img_size = img_obj.get_rect().size
+        self.rect = pygame.Rect(self.pos, self.img_size)
+        self.effect = None
 
-    def attack(self):
-        projectile_ = Projectile((self.x, self.y),
-                                 (player.img_verts['cm'][0], player.img_verts['cm'][1]),
-                                 ticks, 'enemy')
-        active_projectiles.append(projectile_)
+    def collided_with(self, sprite_rect):
+        return self.rect.colliderect(sprite_rect)
 
-    def blit_facing(self):
-        if self.facing == 'right':
-            game_display.blit(pygame.image.load(enemy_sprite), (self.x, self.y))
-        elif self.facing == 'left':
-            game_display.blit(pygame.image.load(enemy_sprite_reversed), (self.x, self.y))
+    def blit(self):
+        game_display.blit(self.img_obj, (self.x, self.y))
 
-
-    def blit_health(self):
-        game_display.blit(font_base.render('Health - ' + str(self.health), True, Color.Black),
-                          (self.x + 10, self.y - 30))
-
-
-    def move(self):
-        if self.step >= config.enemy_small_tickstomove:
-            add_or_sub = ('+', '-')
-            if choice(add_or_sub) == '+':
-                self.x += randint(config.enemy_small_movex_min, config.enemy_small_movex_max)
-            else:
-                self.x -= randint(config.enemy_small_movex_min, config.enemy_small_movex_max)
-
-            if choice(add_or_sub) == '+':
-                self.y += randint(config.enemy_small_movey_min, config.enemy_small_movey_max)
-            else:
-                self.y -= randint(config.enemy_small_movey_min, config.enemy_small_movey_max)
-            self.step = 0
-            self.update_rect()
-        self.step += 1
-
-    def update_rect(self):
-        self.rect = pygame.Rect((self.x, self.y),
-                                (200, 119))
-
-    def kill(self):
-        del active_enemies[active_enemies.index(self)]
-
-
-class HealthPack(pygame.sprite.Sprite):
+    def do_kill(self, kill_type):
+        if kill_type == 'healthpack':
+            global last_healthpack_used
+            global active_healthpacks
+            last_healthpack_used = ticks
+            active_healthpacks -= 1
+        elif kill_type == 'attackboost':
+            global last_attackboost_used
+            global active_dmgup
+            last_attackboost_used = ticks
+            active_dmgup -= 1
+        del active_powerups[active_powerups.index(self)]
+class HealthPack(PowerUp):
     """The class for the health pack
-
     :param x: The x position for the pack to be created at
     :param y: The y position for the pack to be created at"""
 
@@ -222,45 +327,42 @@ class HealthPack(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
-        self.rect = pygame.Rect((self.x, self.y), (46, 31))
+        self.img_obj = health_pack_image
+        self.kill_type = 'healthpack'
+        self.max_active = config.max_healthpacks
+        PowerUp.__init__(self, x, y, ticks, self.img_obj)
 
-    def collided_with(self, sprite_rect):
-        return self.rect.colliderect(sprite_rect)
-
-    def blit(self):
-        game_display.blit(health_pack_image, (self.x, self.y))
-
-    def heal(self):
-        player.health += config.healthpack_heal_amount
-        self.kill()
-
-    def kill(self):
-        del active_health_packs[active_health_packs.index(self)]
+    @staticmethod
+    def do_effect(): player.health += config.healthpack_heal_amount
 
 
 pygame.display.set_caption(window_title)
+pygame.display.set_icon(projectile_image)
 game_display = pygame.display.set_mode((config.window_width, config.window_height),
                                        pygame.HWSURFACE)
 active_keys          = {'w': None, 'a': None, 's': None, 'd': None}
 active_projectiles   = []
 active_mines         = []
 active_enemies       = []
-active_health_packs  = []
+active_powerups      = []
+
+font_render_cache = []
+tick_cache        = []
 
 
 ticks = 0
-enemy = SmallEnemy(900, 600, ticks)
-active_enemies.append(enemy)
-
 pack = HealthPack(500, 400)
-active_health_packs.append(pack)
+active_powerups.append(pack)
 
 player = Player()
 player.rect = pygame.image.load(player_sprite).get_rect()
+name_text   = font_base.render(player.player_name, True, Color.Black)
+font_render_cache.append(name_text)
 player.player_name = inputbox.ask(game_display, "Enter Player Name", font_base)
 
 frame_times = []
 start_t = time()
+
 
 
 def death_screen():
@@ -323,12 +425,16 @@ def title_screen():
 title_screen()
 gameExit = False
 while not gameExit:
+    # print(player.score)
     tick_start_time = datetime.now()
     ticks += 1
-    player.img_verts = functions.player_verts((player.x, player.y), image_size)
+    player.img_verts = functions.player_verts((player.x, player.y), player_image_size)
 
     ## ON EVENT
     for event in pygame.event.get():
+        pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP,
+                                  pygame.MOUSEMOTION, pygame.MOUSEBUTTONUP,
+                                  pygame.MOUSEBUTTONDOWN])
         if event.type == pygame.QUIT:
             gameExit = True
 
@@ -350,13 +456,9 @@ while not gameExit:
         ## Projectiles and Targeting
         # Making the projectile
         if event.type == pygame.MOUSEBUTTONDOWN:
-            print((player.img_verts['cm'][0], player.img_verts['cm'][1]))
-            print(event.pos)
-            projectile = Projectile((player.img_verts['cm'][0],
-                                     player.img_verts['cm'][1]),
-                                     event.pos,
-                                     ticks, 'friendly')
-            active_projectiles.append(projectile)
+            # print((player.img_verts['cm'][0], player.img_verts['cm'][1]))
+            # print(event.pos)
+            player.attack(event.pos, 1)
 
         # Player Facing
         if event.type == pygame.MOUSEMOTION:
@@ -365,19 +467,39 @@ while not gameExit:
 
     ## ENEMY ACTIONS
     for enemy in active_enemies:
-        if ticks - enemy.last_attack >= config.small_enemy_attack_freq:
-            enemy.attack()
-            enemy.last_attack = ticks
+        for __, attack in enemy.atks_dict.items():
+            if ticks - enemy.last_attack >= attack['freq']:
+                enemy.attack(attack['type'], enemy.atk_tup)
+                enemy.last_attack = ticks
 
-        if enemy.health <= 0:
-            enemy.kill()
+        if enemy.health <= 0: enemy.do_kill(enemy.kill_dict)
 
-        if player.x > enemy.x:
-            enemy.facing = 'right'
-        elif player.x < enemy.x:
-            enemy.facing = 'left'
+        if player.x > enemy.x: enemy.facing = 'right'
+        elif player.x < enemy.x: enemy.facing = 'left'
 
-        enemy.move()
+        enemy.move(enemy.move_dict)
+
+
+
+
+    ## SPAWNINGd
+    # BOSSES
+    if ticks - last_enemy_boss_death > config.enemy_boss_create_freq and active_enemies_boss <= config.max_enemy_boss:
+        boss = BossEnemy(randint(200, 1000), randint(200, 600), ticks)
+        active_enemies.append(boss)
+
+    # SMALL ENEMIES
+    if ticks - last_enemy_small_death > config.enemy_small_create_freq and active_enemies_small <= config.max_enemy_small:
+        smallenemy = SmallEnemy(randint(200, 1000), randint(200, 600), ticks)
+        active_enemies.append(smallenemy)
+
+    # HEALTH PACKS
+    if ticks - last_healthpack_used > config.healthpack_create_freq and active_healthpacks <= config.max_healthpacks:
+        pack = HealthPack(randint(60, 1140), randint(40, 760))
+        active_powerups.append(pack)
+
+    # ATKUP
+
 
     ## MOVEMENT, COLLISION, AND FPS
     if active_keys['w']: player.y -= config.player_movespeed_vertical
@@ -390,21 +512,22 @@ while not gameExit:
     # PROJECTILES
     for projectile in active_projectiles:
         projectile.update()
-        if (ticks - projectile.tickmade) > config.projectile_lifespan or \
+        if (ticks - projectile.tickmade) > projectile.atk_package[2] or \
                         projectile.pos == projectile.target:
             projectile.kill()
 
         if projectile.collided_with(player.rect):
             if projectile.type == 'enemy':
-                player.health = player.health - config.small_enemy_damage
+                player.health = player.health - projectile.damage
                 projectile.kill()
 
         if projectile.type != 'enemy':
-            collisionslist = pygame.sprite.spritecollide(projectile, active_enemies, False)
-            if len(collisionslist) != 0: print(collisionslist)
+            small_collisions_list = pygame.sprite.spritecollide(projectile, active_enemies_small, False)
+            collisionslist = small_collisions_list + pygame.sprite.spritecollide(projectile, active_enemies_boss, False)
+            # if len(collisionslist) != 0: print(collisionslist)
             if len(collisionslist) != 0:
                 for enemy in collisionslist:
-                    enemy.health = enemy.health - config.player_damage
+                    enemy.health = enemy.health - projectile.damage
                 projectile.kill()
 
     # MINES
@@ -415,26 +538,43 @@ while not gameExit:
                 mine.kill()
 
     # HEALTHPACKS
-    if len(active_health_packs) != 0:
-        for pack in active_health_packs:
-            if pack.collided_with(player.rect):
-                pack.heal()
+    if len(active_powerups) != 0:
+        for powerup in active_powerups:
+            if powerup.collided_with(player.rect):
+                pack.do_effect()
+                pack.do_kill()
 
     end_t = time()
     time_taken = end_t - start_t
     start_t = end_t
     frame_times.append(time_taken)
     frame_times = frame_times[-20:]
-    fps = len(frame_times) / sum(frame_times)
+    fps = int(len(frame_times) / sum(frame_times))
+
+    del tick_cache[:]
+    tick_cache.append(fps)
+    tick_cache.append(player.health)
+
 
     ## Rendering
-    fps_text        = font_base.render('FPS - ' + str(int(fps)), True, Color.Black)
-    name_text       = font_base.render(player.player_name, True, Color.Black)
-    player_health   = font_base.render('Health - ' + str(player.health), True, Color.Black)
+    '''
+    if ticks <= 5:
+        player_health = font_base.render('Health - ' + str(player.health), True, Color.Black)
+        font_render_cache.append(player_health)
+
+    if player.health != tick_cache[1]:
+        player_health   = font_base.render('Health - ' + str(player.health), True, Color.Black)
+        font_render_cache[2] = player_health
+        '''
+
+    player_health = font_base.render('Health - ' + str(player.health), True, Color.Black)
+    player_score = font_base.render('Score - ' + str(player.score), True, Color.Black)
+    fps_text = font_base.render('FPS - ' + str(fps), True, Color.Black)
     game_display.blit(pygame.image.load(home), (0,0))
     game_display.blit(fps_text, (1130, 780))
     game_display.blit(player_health, (0, 0))
-    game_display.blit(name_text, (player.img_verts['tm'][0] - 10, player.img_verts['tm'][1] - 25))
+    game_display.blit(player_score, (0, 24))
+    game_display.blit(font_render_cache[0], (player.img_verts['tm'][0] - 10, player.img_verts['tm'][1] - 25))
 
     player.blit_facing()
 
@@ -448,12 +588,12 @@ while not gameExit:
 
     if len(active_enemies) != 0:
         for enemy in active_enemies:
-            enemy.blit_facing()
-            enemy.blit_health()
+            enemy.blit_facing(enemy.sprite_tup)
+            enemy.blit_health(enemy.health)
 
-    if len(active_health_packs) != 0:
-        for pack in active_health_packs:
-            pack.blit()
+    if len(active_powerups) != 0:
+        for powerup in active_powerups:
+            powerup.blit()
 
     # OPTIONAL, TO ENABLE, SEE CONFIG FILE SETTINGS
     # To monitor player verts
