@@ -23,6 +23,9 @@ def player_verts(player_pos, size):
              'br': (int(player_pos[0] + size[0]), int(player_pos[1] + size[1]))}
     return verts
 
+def player_center(player_pos, size):
+    return int(player_pos[0] + (size[0] / 2)), int(player_pos[1] + (size[1] / 2))
+
 
 
 def get_angle(origin, destination):

@@ -20,14 +20,16 @@ mine_damage            = 50
 healthpack_heal_amount = 25
 healthpack_create_freq = 500
 max_enemy_boss         = 2
-max_enemy_small        = 4
+max_enemy_small        = 3
 max_healthpacks        = 2
-max_atkup              = 1
+max_dmgup              = 1
+dmgup_lifespan         = 16000
+dmgup_effect_amount    = 40
 
 ## Projectile Attack Packages
 #                 (damage, proj_speed, proj_lifepan)
-player_atk1      = (30    , 10        , 140)
-player_atk2      = (45    , 8         , 130)
+player_atk1      = [30    , 10        , 140]
+player_atk2      = [45    , 8         , 130]
 enemy_small_atk1 = (10    , 10        , 120)
 enemy_small_atk2 = (20    , 6         , 120)
 enemy_boss_atk1  = (25    , 9         , 100)
@@ -49,7 +51,7 @@ enemy_boss_create_freq  = 800
 
 ## Small Enemies
 enemy_small_health       = 150
-enemy_small_atk1_freq    = 35  # Lower to attack more often
+enemy_small_atk1_freq    = 45  # Lower to attack more often
 enemy_small_atk2_freq    = 20
 enemy_small_score_val    = 30
 enemy_small_move_dict    = {'x': {'min': 5, 'max': 12},
