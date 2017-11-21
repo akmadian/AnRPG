@@ -24,6 +24,7 @@ from colors_file import Color
 #TODO: Blit a portion of an image so all related sprites can be in one image
 #TODO: Source sprite spawn area ranges to config file
 #TODO: Fix caching
+#TODO: Fix effect blit overlap of multiple effects
 
 pygame_init = pygame.init()
 
@@ -36,10 +37,6 @@ font_base              = pygame.font.Font(fonts_path + 'Futura.ttf', 20)
 home                   = assets_base_path + '/home_area_beige.jpg'
 player_sprite          = assets_base_path + 'player_sprite.tiff'
 player_sprite_reversed = assets_base_path + 'player_sprite_reversed.tiff'
-enemy_sprite           = assets_base_path + '/enemy_sprite.png'
-enemy_sprite_reversed  = assets_base_path + '/enemy_sprite_reversed.png'
-enemy_sprite_boss      = assets_base_path + 'enemy_boss.png'
-enemy_sprite_boss_revd = assets_base_path + 'enemy_boss_reversed.png'
 sprite_bad_thing       = projectiles_path + '/mine.png'
 health_pack            = assets_base_path + '/healthpack.gif'
 dmgup                  = assets_base_path + '/damage_up.png'
@@ -47,13 +44,9 @@ player_sprite_image    = pygame.image.load(player_sprite)
 projectile_image       = pygame.image.load(projectile)
 home_image             = pygame.image.load(home)
 bad_thing_image        = pygame.image.load(sprite_bad_thing)
-enemy_sprite_image     = pygame.image.load(enemy_sprite)
-enemy_boss_image       = pygame.image.load(enemy_sprite_boss)
 health_pack_image      = pygame.image.load(health_pack)
 dmgup_image            = pygame.image.load(dmgup)
 player_image_size      = player_sprite_image.get_rect().size
-enemy_boss_image_size  = enemy_boss_image.get_rect().size
-enemy_sprite_image_size = enemy_sprite_image.get_rect().size
 window_title           = 'RPG Game'
 
 enemies_killed = 0
@@ -61,20 +54,22 @@ last_enemy_boss_death = 0
 last_enemy_small_death = 0
 last_healthpack_used = 0
 last_attackboost_used = 0
+last_shield_used       = 0
 active_healthpacks = 0
 active_dmgup = 0
+active_shield = 0
 
 
 class Enemy(pygame.sprite.Sprite):
 
-    def __init__(self, x, y, tick, img_obj):
+    def __init__(self, x, y, img_obj):
         pygame.sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
         self.pos = (self.x, self.y)
         self.facing = None
         self.step = 0
-        self.last_attack = tick
+        self.last_attack = ticks
         self.img_size = img_obj.get_rect().size
         self.rect = pygame.Rect(self.pos, self.img_size)
 
@@ -94,9 +89,9 @@ class Enemy(pygame.sprite.Sprite):
 
     def blit_facing(self, sprite_tup):
         if self.facing == 'right':
-            game_display.blit(pygame.image.load(sprite_tup[0]), (self.x, self.y))
+            game_display.blit(sprite_tup[0], (self.x, self.y))
         elif self.facing == 'left':
-            game_display.blit(pygame.image.load(sprite_tup[1]), (self.x, self.y))
+            game_display.blit(sprite_tup[1], (self.x, self.y))
 
 
     def move(self, move_dict):
@@ -136,10 +131,10 @@ class Enemy(pygame.sprite.Sprite):
                           (self.x + 10, self.y - 30))
 class BossEnemy(Enemy):
 
-    def __init__(self, x, y, tick):
+    def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
         self.type        = 'enemy'
-        self.img_obj     = enemy_boss_image
+        self.img_obj     = pygame.image.load(assets_base_path + 'enemy_boss.png')
         self.health      = config.enemy_boss_health
         self.atk_tup     = (config.enemy_boss_atk1, config.enemy_boss_atk2)
         self.atks_dict   = {'atk1': {'freq': config.enemy_boss_atk1_freq,
@@ -148,11 +143,12 @@ class BossEnemy(Enemy):
                             'atk_2': {'freq': config.enemy_boss_atk2_freq,
                                       'atk_pack': self.atk_tup[1],
                                       'type': 2}}
-        self.sprite_tup  = (enemy_sprite_boss, enemy_sprite_boss_revd)
+        self.sprite_tup  = (pygame.image.load(assets_base_path + 'enemy_boss.png'),
+                            pygame.image.load(assets_base_path + 'enemy_boss_reversed.png'))
         self.move_dict   = config.enemy_boss_move_properties
         self.kill_dict   = {'score_val': config.enemy_boss_score_val,
                             'type': 'boss'}
-        Enemy.__init__(self, x, y, tick, self.img_obj)
+        Enemy.__init__(self, x, y, self.img_obj)
 class SmallEnemy(Enemy):
     """The small enemy class
 
@@ -160,10 +156,10 @@ class SmallEnemy(Enemy):
     :param y: The y position for the enemy to be created at
     :param tick: The tick the enemy was created at"""
 
-    def __init__(self, x, y, tick):
+    def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
         self.type        = 'enemy'
-        self.img_obj     = enemy_sprite_image
+        self.img_obj     = pygame.image.load(assets_base_path + '/enemy_sprite.png')
         self.health      = config.enemy_small_health
         self.atk_tup     = (config.enemy_small_atk1, config.enemy_small_atk2)
         self.atks_dict   = {'atk1': {'freq': config.enemy_small_atk1_freq,
@@ -172,12 +168,12 @@ class SmallEnemy(Enemy):
                             'atk_2': {'freq': config.enemy_small_atk2_freq,
                                       'atk_pack': self.atk_tup[1],
                                       'type': 2}}
-        self.sprite_tup  = (enemy_sprite, enemy_sprite_reversed)
+        self.sprite_tup  = (pygame.image.load(assets_base_path + '/enemy_sprite.png'),
+                            pygame.image.load(assets_base_path + '/enemy_sprite_reversed.png'))
         self.move_dict   = config.enemy_small_move_dict
         self.kill_dict   = {'score_val': config.enemy_small_score_val,
                             'type': 'small'}
-
-        Enemy.__init__(self, x, y, tick, self.img_obj)
+        Enemy.__init__(self, x, y, self.img_obj)
 
 class Projectile(pygame.sprite.Sprite):
     """Projectile class
@@ -238,6 +234,7 @@ class Player(pygame.sprite.Sprite):
         self.facing = None
         self.score = 0
         self.type = 'friendly'
+        self.godmode = config.player_godmode
         self.atks = (config.player_atk1, config.player_atk2)
         self.img_size = player_sprite_image.get_rect().size
         self.last_display_effect_start = None
@@ -311,14 +308,14 @@ class Mine(pygame.sprite.Sprite):
 
 class PowerUp(pygame.sprite.Sprite):
 
-    def __init__(self, x, y, tick, img_obj, effect_, effect_text):
+    def __init__(self, x, y, img_obj, effect_, effect_text):
         pygame.sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
         self.pos = (x, y)
         self.img_obj = img_obj
         self.effect = effect_
-        self.tickmade = tick
+        self.tickmade = ticks
         self.img_size = img_obj.get_rect().size
         self.effect_text = effect_text
         self.rect = pygame.Rect(self.pos, self.img_size)
@@ -347,6 +344,11 @@ class PowerUp(pygame.sprite.Sprite):
             global active_dmgup
             last_attackboost_used = ticks
             active_dmgup -= 1
+        elif kill_type == 'shield':
+            global last_shield_used
+            global active_shield
+            last_shield_used = ticks
+            active_shield -= 1
         try:
             del active_powerups[active_powerups.index(self)]
         except ValueError:
@@ -355,8 +357,6 @@ class PowerUp(pygame.sprite.Sprite):
 
     def render_kill(self):
         del active_powerups[active_powerups.index(self)]
-
-
 class HealthPack(PowerUp): # INSTANT POWERUP
     """The class for the health pack
     :param x: The x position for the pack to be created at
@@ -364,35 +364,30 @@ class HealthPack(PowerUp): # INSTANT POWERUP
 
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
-        self.x = x
-        self.y = y
         self.img_obj = health_pack_image
         self.max_active = config.max_healthpacks
         self.kill_type = 'healthpack'
         self.effect = '+ Health'
-        PowerUp.__init__(self, x, y, ticks, self.img_obj, None, self.effect)
+        PowerUp.__init__(self, x, y, self.img_obj, None, self.effect)
 
     def do_effect(self):
         player.health += config.healthpack_heal_amount
-        new_effectblit = EffectBlit(ticks, config.healthpack_heal_amount, 'Health')
+        new_effectblit = EffectBlit(ticks, '+ ' + str(config.healthpack_heal_amount) + ' Health')
         active_effectblits.append(new_effectblit)
         self.do_kill(self.kill_type)
-
 class DamageUp(PowerUp): # TEMPORARY POWERUP
     def __init__(self,x ,y):
-        self.x = x
-        self.y = y
         self.img_obj = dmgup_image
         self.max_active = config.max_dmgup
         self.kill_type = 'dmgup'
         self.lifespan = config.dmgup_lifespan
         self.active_effect = 'Damage Buff'
         self.effect = '+ Damage'
-        PowerUp.__init__(self, x, y, ticks, self.img_obj, self.active_effect, self.effect)
+        PowerUp.__init__(self, x, y, self.img_obj, self.active_effect, self.effect)
     def do_effect(self):
         for atk in player.atks: atk[0] += config.dmgup_effect_amount
 
-        new_effectblit = EffectBlit(ticks, config.healthpack_heal_amount, 'Damage')
+        new_effectblit = EffectBlit(ticks, 'Damage Buff')
         active_effectblits.append(new_effectblit)
 
         new_effecttimer = EffectTimer(self.lifespan, self)
@@ -403,14 +398,35 @@ class DamageUp(PowerUp): # TEMPORARY POWERUP
     @staticmethod
     def undo_effect():
         for atk in player.atks: atk[0] -= config.dmgup_effect_amount
+class Shield(PowerUp):
+    def __init__(self, x, y):
+        self.img_obj = pygame.image.load(assets_base_path + '/shield.png')
+        self.max_active = config.max_shield
+        self.kill_type = 'shield'
+        self.lifespan = config.shield_lifespan
+        self.active_effect = 'Immunity'
+        self.effect = 'Shield'
+        PowerUp.__init__(self, x, y, self.img_obj, u'Immunity', u'Immunity')
 
+    def do_effect(self):
+        player.godmode = True
+        new_effectblit = EffectBlit(ticks, 'Shield')
+        active_effectblits.append(new_effectblit)
+        new_effecttimer = EffectTimer(self.lifespan, self)
+        active_effecttimers.append(new_effecttimer)
+        active_effects.append(self)
+        self.render_kill()
+
+    @staticmethod
+    def undo_effect():
+        player.godmode = False
 
 ## EFFECT HELPER OBJECTS
 class EffectBlit:
-    def __init__(self, tickmade, effect_value, effect_type):
+    def __init__(self, tickmade, effect_type):
         self.tickmade = tickmade
         self.effect_elev = 0
-        self.effect_text = '+ ' + str(effect_value) + ' ' + effect_type
+        self.effect_text = effect_type
         self.display_effect_text = font_base.render(self.effect_text, True, Color.Black)
 
     def do_kill(self):
@@ -452,7 +468,7 @@ tick_cache        = []
 
 
 ticks = 0
-pack = DamageUp(500, 400)
+pack = Shield(500, 400)
 active_powerups.append(pack)
 
 player = Player()
@@ -540,7 +556,7 @@ while not gameExit:
         if event.type == pygame.QUIT:
             gameExit = True
 
-        if player.health <= 0 and config.player_godmode is False:
+        if player.health <= 0 and player.godmode is False:
             player.kill()
 
         ## Character Movement
@@ -592,12 +608,12 @@ while not gameExit:
     ## SPAWNING
     # BOSSES
     if ticks - last_enemy_boss_death > config.enemy_boss_create_freq and len(active_enemies_boss) <= config.max_enemy_boss:
-        boss = BossEnemy(randint(200, 1000), randint(200, 600), ticks)
+        boss = BossEnemy(randint(200, 1000), randint(200, 600))
         active_enemies_boss.append(boss)
 
     # SMALL ENEMIES
     if ticks - last_enemy_small_death > config.enemy_small_create_freq and len(active_enemies_small) <= config.max_enemy_small:
-        smallenemy = SmallEnemy(randint(200, 1000), randint(200, 600), ticks)
+        smallenemy = SmallEnemy(randint(200, 1000), randint(200, 600))
         active_enemies_small.append(smallenemy)
 
     # HEALTH PACKS
@@ -607,6 +623,17 @@ while not gameExit:
         active_powerups.append(pack)
 
     # ATKUP
+    if ticks - last_attackboost_used > config.dmgup_create_freq and active_dmgup <= config.max_dmgup:
+        buff = DamageUp(randint(60, 1140), randint(40, 760))
+        active_dmgup += 1
+        active_powerups.append(buff)
+
+    # SHIELD
+    if ticks - last_shield_used > config.shield_create_freq and active_shield <= config.max_shield:
+        if randint(0, 1) == 1:
+            shield = Shield(randint(60, 1140), randint(40, 760))
+            active_shield += 1
+            active_powerups.append(shield)
 
 
     ## MOVEMENT, COLLISION, AND FPS
@@ -626,7 +653,8 @@ while not gameExit:
 
         if projectile.collided_with(player.rect):
             if projectile.type == 'enemy':
-                player.health = player.health - projectile.damage
+                if player.godmode is False:
+                    player.health = player.health - projectile.damage
                 projectile.kill()
 
         if projectile.type != 'enemy':

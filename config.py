@@ -19,12 +19,16 @@ mine_health            = 30
 mine_damage            = 50
 healthpack_heal_amount = 25
 healthpack_create_freq = 500
+shield_create_freq     = 300
+dmgup_create_freq      = 450
 max_enemy_boss         = 2
 max_enemy_small        = 3
 max_healthpacks        = 2
 max_dmgup              = 1
-dmgup_lifespan         = 16000
+dmgup_lifespan         = 160
 dmgup_effect_amount    = 40
+max_shield             = 0
+shield_lifespan        = 150
 
 ## Projectile Attack Packages
 #                 (damage, proj_speed, proj_lifepan)
@@ -42,7 +46,7 @@ player_starting_x           = 100
 player_starting_y           = 100
 player_movespeed_vertical   = 13
 player_movespeed_horizontal = 13
-player_godmode              = True
+player_godmode              = False
 
 
 ##### Enemies #####
@@ -54,8 +58,8 @@ enemy_small_health       = 150
 enemy_small_atk1_freq    = 45  # Lower to attack more often
 enemy_small_atk2_freq    = 20
 enemy_small_score_val    = 30
-enemy_small_move_dict    = {'x': {'min': 5, 'max': 12},
-                            'y': {'min': 5, 'max': 12},
+enemy_small_move_dict    = {'x': {'min': 3, 'max': 9},
+                            'y': {'min': 3, 'max': 9},
                             'ticks_to_move': 2}
 
 ## Boss Enemies
