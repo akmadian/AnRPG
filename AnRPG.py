@@ -12,7 +12,7 @@ from time import sleep, time
 from sys import argv
 from datetime import datetime
 from random import randint, choice
-
+from copy import copy
 
 # Proprietary Resources
 import functions
@@ -28,6 +28,7 @@ from colors_file import Color
 
 pygame_init = pygame.init()
 
+# ASSET OBJECTS AND PATHS
 base_path              = path.os.path.dirname(path.realpath(argv[0]))
 assets_base_path       = base_path + '/Assets/'
 fonts_path             = base_path + '/Fonts/'
@@ -49,17 +50,42 @@ dmgup_image            = pygame.image.load(dmgup)
 player_image_size      = player_sprite_image.get_rect().size
 window_title           = 'RPG Game'
 
-enemies_killed = 0
-last_enemy_boss_death = 0
+## TRACKERS
+# COUNTERS
+enemies_killed         = 0
+last_enemy_boss_death  = 0
 last_enemy_small_death = 0
-last_healthpack_used = 0
-last_attackboost_used = 0
+last_healthpack_used   = 0
+last_attackboost_used  = 0
 last_shield_used       = 0
-active_healthpacks = 0
-active_dmgup = 0
-active_shield = 0
+active_healthpacks     = 0
+active_dmgup           = 0
+active_shield          = 0
+ticks                  = 0
+# ACTIVE LISTS
+active_keys            = {'w': None, 'a': None, 's': None, 'd': None}
+active_projectiles     = []
+active_mines           = []
+active_enemies_small   = []
+active_enemies_boss    = []
+active_powerups        = []
+active_effectblits     = []
+active_effecttimers    = []
+active_effects         = []
+active_pillars         = []
 
+font_render_cache      = []
+frame_times            = []
 
+## INITIALIZATION
+pygame.display.set_caption(window_title)
+pygame.display.set_icon(projectile_image)
+game_display = pygame.display.set_mode((config.window_width, config.window_height),
+                                               pygame.HWSURFACE)
+start_t = time()
+
+## CLASSES
+# ENEMIES
 class Enemy(pygame.sprite.Sprite):
 
     def __init__(self, x, y, img_obj):
@@ -99,19 +125,23 @@ class Enemy(pygame.sprite.Sprite):
             add_or_sub = ('+', '-')
             if choice(add_or_sub) == '+':
                 self.x += randint(move_dict['x']['min'], move_dict['x']['max'])
+                self.update_rect()
             else:
                 self.x -= randint(move_dict['x']['min'], move_dict['x']['max'])
+                self.update_rect()
 
             if choice(add_or_sub) == '+':
                 self.y += randint(move_dict['y']['min'], move_dict['y']['max'])
+                self.update_rect()
             else:
                 self.y -= randint(move_dict['y']['min'], move_dict['y']['max'])
+                self.update_rect()
             self.step = 0
             self.update_rect()
         self.step += 1
 
     def update_rect(self):
-        self.rect = pygame.Rect(self.pos, self.img_size)
+        self.rect = pygame.Rect(self.x, self.y, self.img_size[0], self.img_size[1])
 
     def do_kill(self, kill_dict):
         global last_enemy_boss_death
@@ -174,7 +204,7 @@ class SmallEnemy(Enemy):
         self.kill_dict   = {'score_val': config.enemy_small_score_val,
                             'type': 'small'}
         Enemy.__init__(self, x, y, self.img_obj)
-
+# PROJECTILE
 class Projectile(pygame.sprite.Sprite):
     """Projectile class
 
@@ -218,7 +248,7 @@ class Projectile(pygame.sprite.Sprite):
             del active_projectiles[active_projectiles.index(self)]
         except ValueError:
             print('ERR - Value error on projectile kill attempt')
-
+# PLAYER
 class Player(pygame.sprite.Sprite):
     """The player class"""
 
@@ -228,7 +258,7 @@ class Player(pygame.sprite.Sprite):
 
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.player_name = None
+        self.player_name = inputbox.ask(game_display, "Enter Player Name", font_base)
         self.img_verts = None
         self.center = None
         self.facing = None
@@ -239,12 +269,10 @@ class Player(pygame.sprite.Sprite):
         self.img_size = player_sprite_image.get_rect().size
         self.last_display_effect_start = None
         self.name_text = font_base.render(self.player_name, True, Color.Black)
-        self.rect = pygame.Rect((self.x, self.y + 92),
-                                (self.img_size[0], self.img_size[1] - 92))
+        self.rect = pygame.Rect(self.x + 8, self.y + 52, 67, 134)
 
     def refresh_rect(self):
-        self.rect = pygame.Rect((self.x, self.y + 92),
-                                (self.img_size[0], self.img_size[1] - 92))
+        self.rect = pygame.Rect(self.x + 8, self.y + 52, 67, 134)
 
     def attack(self, eventpos, atk_type):
         self.recalc_center()
@@ -280,7 +308,7 @@ class Player(pygame.sprite.Sprite):
 
     def kill(self):
         death_screen()
-
+# MINE
 class Mine(pygame.sprite.Sprite):
     """The mine class
 
@@ -305,7 +333,7 @@ class Mine(pygame.sprite.Sprite):
 
     def kill(self):
         del active_mines[active_mines.index(self)]
-
+# POWERUPS
 class PowerUp(pygame.sprite.Sprite):
 
     def __init__(self, x, y, img_obj, effect_, effect_text):
@@ -329,9 +357,9 @@ class PowerUp(pygame.sprite.Sprite):
         game_display.blit(text, ((self.x + self.img_size[0] / 2) - font_base.size(self.effect_text)[0] / 2,
                                   self.y - 3 - font_base.size(self.effect_text)[1]))
 
-    def blit_effect(self):
+    def blit_effect(self, pos):
         text = font_base.render(self.effect, True, Color.Black)
-        game_display.blit(text, (1200 - 3 - font_base.size(self.effect)[0], 3))
+        game_display.blit(text, (1200 - 3 - font_base.size(self.effect)[0], 3 + pos[1]))
 
     def do_kill(self, kill_type):
         if kill_type == 'healthpack':
@@ -372,7 +400,7 @@ class HealthPack(PowerUp): # INSTANT POWERUP
 
     def do_effect(self):
         player.health += config.healthpack_heal_amount
-        new_effectblit = EffectBlit(ticks, '+ ' + str(config.healthpack_heal_amount) + ' Health')
+        new_effectblit = EffectBlit(ticks, '+ ' + str(config.healthpack_heal_amount) + ' Health', (0, 0, 0))
         active_effectblits.append(new_effectblit)
         self.do_kill(self.kill_type)
 class DamageUp(PowerUp): # TEMPORARY POWERUP
@@ -387,7 +415,7 @@ class DamageUp(PowerUp): # TEMPORARY POWERUP
     def do_effect(self):
         for atk in player.atks: atk[0] += config.dmgup_effect_amount
 
-        new_effectblit = EffectBlit(ticks, 'Damage Buff')
+        new_effectblit = EffectBlit(ticks, 'Damage Buff', (0, 0, 0))
         active_effectblits.append(new_effectblit)
 
         new_effecttimer = EffectTimer(self.lifespan, self)
@@ -410,7 +438,7 @@ class Shield(PowerUp):
 
     def do_effect(self):
         player.godmode = True
-        new_effectblit = EffectBlit(ticks, 'Shield')
+        new_effectblit = EffectBlit(ticks, 'Shield', (0, 0, 0))
         active_effectblits.append(new_effectblit)
         new_effecttimer = EffectTimer(self.lifespan, self)
         active_effecttimers.append(new_effecttimer)
@@ -419,15 +447,15 @@ class Shield(PowerUp):
 
     @staticmethod
     def undo_effect():
-        player.godmode = False
-
-## EFFECT HELPER OBJECTS
+        player.godmode = False if config.player_godmode == False else True
+# EFFECT HELPERS
 class EffectBlit:
-    def __init__(self, tickmade, effect_type):
+    def __init__(self, tickmade, effect_type, color):
         self.tickmade = tickmade
         self.effect_elev = 0
         self.effect_text = effect_type
-        self.display_effect_text = font_base.render(self.effect_text, True, Color.Black)
+        self.color = color
+        self.display_effect_text = font_base.render(self.effect_text, True, self.color)
 
     def do_kill(self):
         del active_effectblits[active_effectblits.index(self)]
@@ -446,69 +474,41 @@ class EffectTimer: # ONLY USED IN TEMPORARY POWERUPS
         self.parent.do_kill(self.parent.kill_type)
         del active_effecttimers[active_effecttimers.index(self)]
 
+class Obstacle(pygame.sprite.Sprite):
+    def __init__(self, x, y, rect, img):
+        self.x = x
+        self.y = y
+        self.rect = rect
+        self.img_obj = img
+        pygame.sprite.Sprite.__init__(self)
+
+    def collided_with(self, sprite_rect):
+        return self.rect.colliderect(sprite_rect)
 
 
+    def blit(self):
+        game_display.blit(self.img_obj, (self.x, self.y))
+class Pillar(Obstacle):
+    def __init__(self, x, y):
+        self.img_obj = pygame.image.load(assets_base_path + '/pillar.png')
+        self.img_size = self.img_obj.get_rect().size
+        self.rect = (x + 6, y + 19, 49, 107)
+        Obstacle.__init__(self, x, y, self.rect, self.img_obj)
 
-pygame.display.set_caption(window_title)
-pygame.display.set_icon(projectile_image)
-game_display = pygame.display.set_mode((config.window_width, config.window_height),
-                                       pygame.HWSURFACE)
-active_keys           = {'w': None, 'a': None, 's': None, 'd': None}
-active_projectiles    = []
-active_mines          = []
-active_enemies_small  = []
-active_enemies_boss   = []
-active_powerups       = []
-active_effectblits    = []
-active_effecttimers   = []
-active_effects        = []
+pillar = Pillar(200, 500)
+active_pillars.append(pillar)
+pillar = Pillar(800, 500)
+active_pillars.append(pillar)
+pillar = Pillar(200, 100)
+active_pillars.append(pillar)
+pillar = Pillar(800, 100)
+active_pillars.append(pillar)
 
-font_render_cache = []
-tick_cache        = []
-
-
-ticks = 0
-pack = Shield(500, 400)
-active_powerups.append(pack)
 
 player = Player()
-player.rect = pygame.image.load(player_sprite).get_rect()
-name_text   = font_base.render(player.player_name, True, Color.Black)
-font_render_cache.append(name_text)
-player.player_name = inputbox.ask(game_display, "Enter Player Name", font_base)
-
-frame_times = []
-start_t = time()
-
-
 
 def death_screen():
-    alpha = 100
-    game_exit = False
-    print('death screen started')
-    background = assets_base_path + 'gameoverbackground.jpg'
-    while not game_exit:
-        game_display.blit(pygame.image.load(background), (0, 0))
-
-    '''
-    quit_game = False
-    background       = assets_base_path + 'gameoverbackground.jpg'
-    background_image = pygame.image.load(background).convert()
-
-    while True:
-        for event_ in pygame.event.get():
-            if event_.type == pygame.QUIT:
-                quit()
-
-
-        game_over_text = font_base.render('You Died', True, Color.White)
-        game_over_text.set_alpha(alpha)
-
-        game_display.blit(background_image, (0, 0))
-        game_display.blit(game_over_text, (500, 111))
-
-        alpha += 3
-    '''
+    quit() # Temporary
 
 def title_screen():
     background = assets_base_path + 'title_screen.png'
@@ -540,6 +540,7 @@ def title_screen():
 def kill_all_keys():
     for _, value in active_keys.items():
         active_keys[_] = False
+
 
 title_screen()
 gameExit = False
@@ -575,9 +576,10 @@ while not gameExit:
         ## Projectiles and Targeting
         # Making the projectile
         if event.type == pygame.MOUSEBUTTONDOWN:
-            # print((player.img_verts['cm'][0], player.img_verts['cm'][1]))
-            # print(event.pos)
-            player.attack(event.pos, 1)
+            if pygame.mouse.get_pressed()[0] == 1:
+                player.attack(event.pos, 1)
+            elif pygame.mouse.get_pressed()[2] == 1:
+                pass
 
         # Player Facing
         if event.type == pygame.MOUSEMOTION:
@@ -586,35 +588,36 @@ while not gameExit:
 
     ## ENEMY ACTIONS
     for enemy in active_enemies_small + active_enemies_boss:
+        # ATTACKING
         for __, attack in enemy.atks_dict.items():
             if ticks - enemy.last_attack >= attack['freq']:
                 enemy.attack(attack['type'], enemy.atk_tup)
                 enemy.last_attack = ticks
 
+        # HEALTH CHECK
         if enemy.health <= 0:
             enemy.do_kill(enemy.kill_dict)
             enemies_killed += 1
             print('TASK - Enemy killed - ' + str(enemies_killed) + ' Total')
 
+        # FACING
         if player.x > enemy.x: enemy.facing = 'right'
         elif player.x < enemy.x: enemy.facing = 'left'
 
         enemy.move(enemy.move_dict)
 
 
-
-
-
     ## SPAWNING
-    # BOSSES
-    if ticks - last_enemy_boss_death > config.enemy_boss_create_freq and len(active_enemies_boss) <= config.max_enemy_boss:
-        boss = BossEnemy(randint(200, 1000), randint(200, 600))
-        active_enemies_boss.append(boss)
+    if config.enable_enemy_spawning:
+        # BOSSES
+        if ticks - last_enemy_boss_death > config.enemy_boss_create_freq and len(active_enemies_boss) <= config.max_enemy_boss:
+            boss = BossEnemy(randint(200, 1000), randint(200, 600))
+            active_enemies_boss.append(boss)
 
-    # SMALL ENEMIES
-    if ticks - last_enemy_small_death > config.enemy_small_create_freq and len(active_enemies_small) <= config.max_enemy_small:
-        smallenemy = SmallEnemy(randint(200, 1000), randint(200, 600))
-        active_enemies_small.append(smallenemy)
+        # SMALL ENEMIES
+        if ticks - last_enemy_small_death > config.enemy_small_create_freq and len(active_enemies_small) <= config.max_enemy_small:
+            smallenemy = SmallEnemy(randint(200, 1000), randint(200, 600))
+            active_enemies_small.append(smallenemy)
 
     # HEALTH PACKS
     if ticks - last_healthpack_used > config.healthpack_create_freq and active_healthpacks <= config.max_healthpacks:
@@ -630,33 +633,52 @@ while not gameExit:
 
     # SHIELD
     if ticks - last_shield_used > config.shield_create_freq and active_shield <= config.max_shield:
-        if randint(0, 1) == 1:
+        if randint(0, 5) == 1:
             shield = Shield(randint(60, 1140), randint(40, 760))
             active_shield += 1
             active_powerups.append(shield)
 
 
     ## MOVEMENT, COLLISION, AND FPS
-    if active_keys['w']: player.y -= config.player_movespeed_vertical
-    if active_keys['s']: player.y += config.player_movespeed_vertical
-    if active_keys['a']: player.x -= config.player_movespeed_horizontal
-    if active_keys['d']: player.x += config.player_movespeed_horizontal
-    player.refresh_rect()
+
+    rect_ = copy(player)
+    if active_keys['w']: rect_.y -= config.player_movespeed_vertical
+    if active_keys['s']: rect_.y += config.player_movespeed_vertical
+    if active_keys['a']: rect_.x -= config.player_movespeed_horizontal
+    if active_keys['d']: rect_.x += config.player_movespeed_horizontal
+    rect_.refresh_rect()
+    pillar_player_collisions_list = pygame.sprite.spritecollide(rect_, active_pillars, False)
+    if len(pillar_player_collisions_list) != 0:
+        # print('Collisions With Pillars')
+        pass
+    else:
+        # print('No Collisions With Pillars')
+        if active_keys['w']: player.y -= config.player_movespeed_vertical
+        if active_keys['s']: player.y += config.player_movespeed_vertical
+        if active_keys['a']: player.x -= config.player_movespeed_horizontal
+        if active_keys['d']: player.x += config.player_movespeed_horizontal
+        player.refresh_rect()
 
     # PROJECTILE COLLISION SCANNING
     # PROJECTILES
+    # Update projectile position
     for projectile in active_projectiles:
         projectile.update()
         if (ticks - projectile.tickmade) > projectile.atk_package[2] or \
                         projectile.pos == projectile.target:
             projectile.kill()
 
+        # If enemy projectile collides with player
         if projectile.collided_with(player.rect):
             if projectile.type == 'enemy':
                 if player.godmode is False:
+                    print('Godmode Off')
                     player.health = player.health - projectile.damage
+                    effect = EffectBlit(ticks, '- ' + str(projectile.damage) + ' Health', (255, 0, 0))
+                    active_effectblits.append(effect)
                 projectile.kill()
 
+        # If player projectile collides with enemy
         if projectile.type != 'enemy':
             collisionslist = pygame.sprite.spritecollide(projectile, active_enemies_small, False)
             collisions_list = collisionslist + pygame.sprite.spritecollide(projectile, active_enemies_boss, False)
@@ -665,6 +687,10 @@ while not gameExit:
                 for enemy in collisions_list:
                     enemy.health = enemy.health - projectile.damage
                 projectile.kill()
+
+        pillar_projs_collisions_list = pygame.sprite.spritecollide(projectile, active_pillars, False)
+        if len(pillar_projs_collisions_list) != 0:
+            projectile.kill()
 
     # MINES
     if len(active_mines) != 0:
@@ -690,10 +716,6 @@ while not gameExit:
     frame_times.append(time_taken)
     frame_times = frame_times[-20:]
     fps = int(len(frame_times) / sum(frame_times))
-
-    del tick_cache[:]
-    tick_cache.append(fps)
-    tick_cache.append(player.health)
 
 
     ## Rendering
@@ -739,11 +761,38 @@ while not gameExit:
             player.do_display_effect(effect)
 
     if len(active_effects) != 0:
+        i = 0
         for effect in active_effects:
-            effect.blit_effect()
+            effect.blit_effect((None, i * 20 + 3 if i >= 1 else 0))
+            i += 1 # Spacing between effects
+
+    if len(active_pillars) != 0:
+        for pillar in active_pillars:
+            pillar.blit()
 
     # OPTIONAL, TO ENABLE, SEE CONFIG FILE SETTINGS
     # To monitor player verts
+    if config.render_hitboxes:
+        if len(active_pillars) != 0:
+            for pillar in active_pillars:
+                s = pygame.Surface((pillar.rect[2], pillar.rect[3]))
+                s.set_alpha(150)
+                s.fill((255, 0, 0))
+                game_display.blit(s, (pillar.rect[0], pillar.rect[1]))
+
+        if len(active_enemies_small + active_enemies_boss) != 0:
+            for enemy in active_enemies_small + active_enemies_boss:
+                s = pygame.Surface((enemy.rect[2], enemy.rect[3]))
+                s.set_alpha(150)
+                s.fill((255, 0, 0))
+                game_display.blit(s, (enemy.rect[0], enemy.rect[1]))
+
+        s = pygame.Surface((player.rect[2], player.rect[3]))
+        s.set_alpha(150)
+        s.fill((255, 0, 0))
+        game_display.blit(s, (player.rect[0], player.rect[1]))
+
+        
     if config.render_player_verts:
         for _, coords in player.img_verts.items():
             pygame.draw.circle(game_display, Color.Goldenrod, coords, 10)
@@ -758,6 +807,5 @@ while not gameExit:
     with open('tick_times.txt', 'a') as f:
         f.write(str(tick_time)[6:] + 'fps - %s' + '\n') %fps
     '''
-
 pygame.quit()
 quit()

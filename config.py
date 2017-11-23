@@ -7,7 +7,8 @@ Notes -
                       sprite spawn positions, and sprite sizes will not change.
 """
 ## Rendering
-render_player_verts = False
+render_player_verts    = False
+render_hitboxes        = False
 
 ## Window Settings
 window_width  = 1200
@@ -19,7 +20,7 @@ mine_health            = 30
 mine_damage            = 50
 healthpack_heal_amount = 25
 healthpack_create_freq = 500
-shield_create_freq     = 300
+shield_create_freq     = 600
 dmgup_create_freq      = 450
 max_enemy_boss         = 2
 max_enemy_small        = 3
@@ -46,12 +47,13 @@ player_starting_x           = 100
 player_starting_y           = 100
 player_movespeed_vertical   = 13
 player_movespeed_horizontal = 13
-player_godmode              = False
+player_godmode              = True
 
 
 ##### Enemies #####
 enemy_small_create_freq = 300 # Lower to spawn more often
 enemy_boss_create_freq  = 800
+enable_enemy_spawning   = True
 
 ## Small Enemies
 enemy_small_health       = 150

@@ -33,6 +33,8 @@ def get_key():
         event = pygame.event.poll()
         if event.type == KEYDOWN:
             return event.key
+        elif event.type == QUIT:
+            quit()
         else:
             pass
 
