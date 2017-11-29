@@ -25,7 +25,6 @@ from colors_file import Color
 #TODO: Source sprite spawn area ranges to config file
 #TODO: Fix caching
 #TODO: Fix effect blit overlap of multiple effects
-#TODO: TODOS
 
 pygame_init = pygame.init()
 
