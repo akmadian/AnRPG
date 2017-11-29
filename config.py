@@ -8,11 +8,12 @@ Notes -
 """
 ## Rendering
 render_player_verts    = False
-render_hitboxes        = False
+render_hitboxes        = True
+
 
 ## Window Settings
-window_width  = 1200
-window_height = 800
+window_width  = 1500
+window_height = 600
 
 
 ## Misc
@@ -53,7 +54,7 @@ player_godmode              = True
 ##### Enemies #####
 enemy_small_create_freq = 300 # Lower to spawn more often
 enemy_boss_create_freq  = 800
-enable_enemy_spawning   = True
+enable_enemy_spawning   = False
 
 ## Small Enemies
 enemy_small_health       = 150

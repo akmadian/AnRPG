@@ -4,6 +4,8 @@
     Author: Ari Madian
     Created: October 4, 2017 3:30 PM
     Python Version: 3.6
+
+    get_angle and project were taken from a pygame forum.
 """
 from math import sin, cos, atan2, pi
 

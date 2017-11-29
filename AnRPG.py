@@ -13,6 +13,7 @@ from sys import argv
 from datetime import datetime
 from random import randint, choice
 from copy import copy
+import configparser
 
 # Proprietary Resources
 import functions
@@ -24,7 +25,7 @@ from colors_file import Color
 #TODO: Blit a portion of an image so all related sprites can be in one image
 #TODO: Source sprite spawn area ranges to config file
 #TODO: Fix caching
-#TODO: Fix effect blit overlap of multiple effects
+#TODO: Fix controls thing when active collision with obstacle
 
 pygame_init = pygame.init()
 
@@ -73,15 +74,29 @@ active_effectblits     = []
 active_effecttimers    = []
 active_effects         = []
 active_pillars         = []
+active_walls           = []
+active_collective      = [active_keys, active_projectiles, active_mines, active_enemies_small,
+                          active_enemies_boss, active_powerups, active_effectblits, active_effectblits,
+                          active_effecttimers, active_effects, active_pillars, active_walls]
+misc_blit_queue        = []
+active_menus           = []
 
 font_render_cache      = []
 frame_times            = []
 
 ## INITIALIZATION
+window_height = config.window_height
+window_width  = config.window_width
+
 pygame.display.set_caption(window_title)
 pygame.display.set_icon(projectile_image)
-game_display = pygame.display.set_mode((config.window_width, config.window_height),
-                                               pygame.HWSURFACE)
+game_display = pygame.display.set_mode((window_width, window_height),
+                                       pygame.RESIZABLE)
+
+persist_cfg = configparser.ConfigParser()
+persist_cfg.read('config.ini')
+
+
 start_t = time()
 
 ## CLASSES
@@ -227,12 +242,14 @@ class Projectile(pygame.sprite.Sprite):
         self.angle = functions.get_angle(self.pos, self.target)
         self.speed = self.atk_package[1]
         self.tickmade = tick
-        self.rect = pygame.Rect((self.pos[0], self.pos[1]), (32, 32))
+        self.rect = pygame.Rect(self.pos[0] + 8, self.pos[1] + 7, 17, 17)
 
     def update(self):
+        if self.pos == self.target:
+            self.kill()
         self.angle = functions.get_angle(self.pos, self.target)
         self.pos = functions.project(self.pos, self.angle, self.speed)
-        self.rect.center = self.pos
+        self.rect = pygame.Rect(self.pos[0] + 8, self.pos[1] + 7, 17, 17)
 
     def blit(self):
         if self.type == 'friendly':
@@ -359,7 +376,7 @@ class PowerUp(pygame.sprite.Sprite):
 
     def blit_effect(self, pos):
         text = font_base.render(self.effect, True, Color.Black)
-        game_display.blit(text, (1200 - 3 - font_base.size(self.effect)[0], 3 + pos[1]))
+        game_display.blit(text, (window_width - 3 - font_base.size(self.effect)[0], 3 + pos[1]))
 
     def do_kill(self, kill_type):
         if kill_type == 'healthpack':
@@ -485,15 +502,112 @@ class Obstacle(pygame.sprite.Sprite):
     def collided_with(self, sprite_rect):
         return self.rect.colliderect(sprite_rect)
 
-
     def blit(self):
-        game_display.blit(self.img_obj, (self.x, self.y))
+        try:
+            game_display.blit(self.img_obj, (self.x, self.y))
+        except TypeError as e:
+            # print('TypeError in Obstacle Blit')
+            # print(e)
+            pass
 class Pillar(Obstacle):
     def __init__(self, x, y):
         self.img_obj = pygame.image.load(assets_base_path + '/pillar.png')
         self.img_size = self.img_obj.get_rect().size
-        self.rect = (x + 6, y + 19, 49, 107)
+        self.rect = pygame.Rect(x + 6, y + 19, 49, 107)
         Obstacle.__init__(self, x, y, self.rect, self.img_obj)
+class Wall(Obstacle):
+    def __init__(self, x, y):
+        self.img_obj = pygame.image.load(assets_base_path + '/wall.png')
+        self.rect = pygame.Rect(x + 6, y + 19, 49, 107)
+        Obstacle.__init__(self, x, y, self.rect, self.img_obj)
+class InvisWall(Obstacle):
+    def __init__(self, x, y, width, height):
+        self.rect = pygame.Rect(x, y, width, height)
+        Obstacle.__init__(self, x, y, self.rect, None)
+
+class Menu(pygame.sprite.Sprite):
+    def __init__(self):
+        self.active = False
+        pygame.sprite.Sprite.__init__(self)
+
+    def set_active(self):
+        pass
+class SettingsMenu(Menu):
+    def __init__(self):
+        self.menu_width = 400
+        self.menu_height = 400
+        self.title = font_base.render('Settings', True, (255, 255, 255))
+        self.toggled_true_img = pygame.image.load(assets_base_path + '/checkboxes_False.png')
+        self.collapsed_img = pygame.image.load(assets_base_path + '/checkboxes_True.png')
+        self.collapsed_img_size = self.collapsed_img.get_rect().size
+        self.pos = (window_width - self.collapsed_img_size[0], 0)
+        self.collapsed_rect = pygame.Rect(self.pos[0], self.pos[1], self.collapsed_img_size[0], self.collapsed_img_size[1])
+        self.expanded_rect = pygame.Rect(window_width - self.menu_width, 0, self.menu_width, self.menu_height)
+        self.settings_rects = [pygame.Rect(self.pos[0] + 30, self.pos[1] + 30, 32, 32)]
+        self.settings_deps = {'player_godmode': [persist_cfg['Player'].getboolean('player_godmode'), False],
+                              'render_player_verts': [persist_cfg['RuntimeSettings'].getboolean('render_player_verts'), True],
+                              'render_hitboxes': [persist_cfg['RuntimeSettings'].getboolean('render_hitboxes'), False]}
+        self.settings = {'GodMode': {'rect': pygame.Rect(window_width - 390, 0 * 45 + 35,
+                                                         32, 32),
+                                     'toggle_action': {'Section': 'Player', 'Setting': 'player_godmode', 'Value': self.settings_deps['player_godmode'][0]}},
+
+                         'Render_player_verts': {'rect': pygame.Rect(window_width - 390, 1 * 45 + 35,
+                                                                     32, 32),
+                                                  'toggle_action': {'Section': 'RuntimeSettings', 'Setting': 'render_player_verts', 'Value': self.settings_deps['render_player_verts'][0]}},
+
+                         'Render_hitboxes': {'rect': pygame.Rect(window_width - 390, 2 * 45 + 35,
+                                                         32, 32),
+                                             'toggle_action': {'Section': 'RuntimeSettings', 'Setting': 'render_hitboxes', 'Value': self.settings_deps['render_hitboxes'][0]}}}
+        Menu.__init__(self)
+
+
+    def update_settings(self, section, setting, value):
+        print('Settings Change')
+        print(section)
+        print(setting)
+        print(not value)
+
+        persist_cfg.set(str(section), str(setting), str(not value))
+        self.settings_deps[setting][1] = not self.settings_deps[setting][1]
+
+    def blit(self):
+        if self.active:
+            count = 0
+            backrect = pygame.Surface((self.expanded_rect[2], self.expanded_rect[3]))
+            backrect.set_alpha(150)
+            backrect.fill((0, 0, 0))
+            game_display.blit(backrect, (window_width - self.menu_width, 0))
+            game_display.blit(self.title, (window_width - self.menu_width + 10, 10))
+
+            for key, value in self.settings.items():
+                game_display.blit(self.toggled_true_img if self.settings_deps[value['toggle_action']['Setting']][1] else self.collapsed_img, (window_width - 390, count * 45 + 35))
+                game_display.blit(font_base.render(str(key), True, (255, 255, 255)), (window_width - 343, count * 45 + 35))
+                count += 1
+        else:
+            game_display.blit(self.collapsed_img, self.pos)
+
+    def check_collision(self, eventpos):
+        return self.collapsed_rect.collidepoint(eventpos[0], eventpos[1])
+
+    def check_expanded_collision(self, eventpos):
+        return self.expanded_rect.collidepoint(eventpos[0], eventpos[1])
+
+    def check_which_setting_toggle(self, eventpos):
+        for _, subdict in self.settings.items():
+            if subdict['rect'].collidepoint(eventpos[0], eventpos[1]):
+                self.update_settings(subdict['toggle_action']['Section'],
+                                     subdict['toggle_action']['Setting'],
+                                     subdict['toggle_action']['Value'])
+
+    def toggle_active(self):
+        if self.active:
+            self.active = False
+        else:
+            self.active = True
+
+
+settings_menu = SettingsMenu()
+active_menus.append(settings_menu)
 
 pillar = Pillar(200, 500)
 active_pillars.append(pillar)
@@ -503,6 +617,16 @@ pillar = Pillar(200, 100)
 active_pillars.append(pillar)
 pillar = Pillar(800, 100)
 active_pillars.append(pillar)
+
+## Init for border walls
+inviswall = InvisWall(-1, -1, window_width + 1, 1)
+active_walls.append(inviswall)
+inviswall = InvisWall(window_width + 1, -1, 1, 900)
+active_walls.append(inviswall)
+inviswall = InvisWall(-1, window_height + 1, 1800, 1)
+active_walls.append(inviswall)
+inviswall = InvisWall(-1, -1, 1, window_height + 1)
+active_walls.append(inviswall)
 
 
 player = Player()
@@ -541,11 +665,26 @@ def kill_all_keys():
     for _, value in active_keys.items():
         active_keys[_] = False
 
+def remake_inviswalls(w, h):
+    del active_walls[:]
+    wall_ = InvisWall(-1, -1, w + 1, 1)
+    active_walls.append(wall_)
+    wall_ = InvisWall(window_width + 1, -1, 1, h + 1)
+    active_walls.append(wall_)
+    wall_ = InvisWall(-1, h + 1, w + 1, 1)
+    active_walls.append(wall_)
+    wall_ = InvisWall(-1, -1, 1, h + 1)
+    active_walls.append(wall_)
+
+
+
 
 title_screen()
 gameExit = False
 while not gameExit:
+    # print((player.x, player.y))
     # print(player.score)
+    persist_cfg.read('config.ini')
     tick_start_time = datetime.now()
     ticks += 1
 
@@ -557,8 +696,12 @@ while not gameExit:
         if event.type == pygame.QUIT:
             gameExit = True
 
-        if player.health <= 0 and player.godmode is False:
-            player.kill()
+        if event.type == pygame.VIDEORESIZE:
+            window_height = event.h
+            window_width = event.w
+            game_display = pygame.display.set_mode((window_width, window_height), pygame.RESIZABLE)
+            home_image = pygame.transform.scale(home_image, (window_width, window_height))
+            remake_inviswalls(event.w, event.h)
 
         ## Character Movement
         if event.type == pygame.KEYDOWN:
@@ -576,15 +719,24 @@ while not gameExit:
         ## Projectiles and Targeting
         # Making the projectile
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if pygame.mouse.get_pressed()[0] == 1:
-                player.attack(event.pos, 1)
-            elif pygame.mouse.get_pressed()[2] == 1:
-                pass
+            if settings_menu.check_collision(event.pos):
+                settings_menu.toggle_active()
+            elif settings_menu.check_expanded_collision(event.pos):
+                settings_menu.check_which_setting_toggle(event.pos)
+            else:
+                if pygame.mouse.get_pressed()[0] == 1:
+                    player.attack(event.pos, 1)
+                elif pygame.mouse.get_pressed()[2] == 1:
+                    pass
 
         # Player Facing
         if event.type == pygame.MOUSEMOTION:
             if event.pos[0] > player.x: player.facing = 'right'
             else: player.facing = 'left'
+
+
+    if player.health <= 0 and player.godmode is False:
+        player.kill()
 
     ## ENEMY ACTIONS
     for enemy in active_enemies_small + active_enemies_boss:
@@ -640,7 +792,6 @@ while not gameExit:
 
 
     ## MOVEMENT, COLLISION, AND FPS
-
     rect_ = copy(player)
     if active_keys['w']: rect_.y -= config.player_movespeed_vertical
     if active_keys['s']: rect_.y += config.player_movespeed_vertical
@@ -648,7 +799,8 @@ while not gameExit:
     if active_keys['d']: rect_.x += config.player_movespeed_horizontal
     rect_.refresh_rect()
     pillar_player_collisions_list = pygame.sprite.spritecollide(rect_, active_pillars, False)
-    if len(pillar_player_collisions_list) != 0:
+    wall_player_collisions_list   = pygame.sprite.spritecollide(rect_, active_walls, False)
+    if len(pillar_player_collisions_list + wall_player_collisions_list) != 0:
         # print('Collisions With Pillars')
         pass
     else:
@@ -716,6 +868,7 @@ while not gameExit:
     frame_times.append(time_taken)
     frame_times = frame_times[-20:]
     fps = int(len(frame_times) / sum(frame_times))
+    fps_string = 'FPS - ' + str(fps)
 
 
     ## Rendering
@@ -731,30 +884,30 @@ while not gameExit:
 
     player_health = font_base.render('Health - ' + str(player.health), True, Color.Black)
     player_score = font_base.render('Score - ' + str(player.score), True, Color.Black)
-    fps_text = font_base.render('FPS - ' + str(fps), True, Color.Black)
-    game_display.blit(pygame.image.load(home), (0,0))
-    game_display.blit(fps_text, (1130, 780))
+    fps_text = font_base.render(fps_string, True, Color.Black)
+    game_display.blit(home_image, (0,0))
+    game_display.blit(fps_text,
+                      (window_width - font_base.size(fps_string)[0] - 15,
+                       window_height - font_base.size(fps_string)[1] - 3))
     game_display.blit(player_health, (0, 0))
     game_display.blit(player_score, (0, 24))
 
     player.blit_facing()
 
-    if len(active_projectiles) != 0:
-        for projectile in active_projectiles:
-            projectile.blit()
+    active_collective = [active_projectiles, active_mines, active_powerups,
+                         active_pillars, active_walls]
 
-    if len(active_mines) != 0:
-        for mine in active_mines:
-            mine.blit()
+    count = 0
+    for list_ in active_collective:
+        count += 1
+        if len(list_) != 0:
+            for thing_ in list_:
+                thing_.blit()
 
     if len(active_enemies_small + active_enemies_boss) != 0:
         for enemy in active_enemies_small + active_enemies_boss:
             enemy.blit_facing(enemy.sprite_tup)
             enemy.blit_health(enemy.health)
-
-    if len(active_powerups) != 0:
-        for powerup in active_powerups:
-            powerup.blit()
 
     if len(active_effectblits) != 0:
         for effect in active_effectblits:
@@ -766,13 +919,12 @@ while not gameExit:
             effect.blit_effect((None, i * 20 + 3 if i >= 1 else 0))
             i += 1 # Spacing between effects
 
-    if len(active_pillars) != 0:
-        for pillar in active_pillars:
-            pillar.blit()
+
+    settings_menu.blit()
 
     # OPTIONAL, TO ENABLE, SEE CONFIG FILE SETTINGS
     # To monitor player verts
-    if config.render_hitboxes:
+    if persist_cfg['RuntimeSettings'].getboolean('render_hitboxes'):
         if len(active_pillars) != 0:
             for pillar in active_pillars:
                 s = pygame.Surface((pillar.rect[2], pillar.rect[3]))
@@ -787,12 +939,26 @@ while not gameExit:
                 s.fill((255, 0, 0))
                 game_display.blit(s, (enemy.rect[0], enemy.rect[1]))
 
+        if len(active_walls) != 0:
+            for inviswall in active_walls:
+                s = pygame.Surface((inviswall.rect[2], inviswall.rect[3]))
+                s.set_alpha(150)
+                s.fill((255, 255, 0))
+                game_display.blit(s, (inviswall.rect[0], inviswall.rect[1]))
+
+        if len(active_projectiles) != 0:
+            for projectile in active_projectiles:
+                s = pygame.Surface((projectile.rect[2], projectile.rect[3]))
+                s.set_alpha(150)
+                s.fill((0, 0, 0))
+                game_display.blit(s, (projectile.rect[0], projectile.rect[1]))
+
         s = pygame.Surface((player.rect[2], player.rect[3]))
-        s.set_alpha(150)
+        s.set_alpha(150)         
         s.fill((255, 0, 0))
         game_display.blit(s, (player.rect[0], player.rect[1]))
 
-        
+
     if config.render_player_verts:
         for _, coords in player.img_verts.items():
             pygame.draw.circle(game_display, Color.Goldenrod, coords, 10)
