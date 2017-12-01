@@ -28,17 +28,6 @@ from pygame.locals import *
 bad_words_file = path.os.path.dirname(path.realpath(argv[0])) \
                  + '/bad_words.txt'
 
-def get_key():
-    while 1:
-        event = pygame.event.poll()
-        if event.type == KEYDOWN:
-            return event.key
-        elif event.type == QUIT:
-            quit()
-        else:
-            pass
-
-
 def display_box(screen, message, fontpath):
     "Print a message in a box in the middle of the screen"
     fontobject = fontpath
@@ -63,22 +52,24 @@ def ask(screen, question, font):
     pygame.font.init()
     current_string = []
     display_box(screen, question + ": " + "".join(current_string), font)
-    while 1:
-        inkey = get_key()
-        if inkey == K_BACKSPACE:
-            current_string = current_string[0:-1]
-        elif inkey == K_RETURN:
-            file = open(bad_words_file, 'r').readlines()
-            if "".join(current_string) in [thing[:-1] for thing in file]:
-                current_string = []
-            else:
-                break
-        elif inkey == K_MINUS:
-            current_string.append("_")
-        elif inkey <= 127:
-            current_string.append(chr(inkey))
-        display_box(screen, question + ": " + "".join(current_string), font)
-    return "".join(current_string)
+    
+    while True:
+        event = pygame.event.poll()
+        if event.type == KEYDOWN:
+            if event.key == K_BACKSPACE:
+                current_string = current_string[0:-1]
+            elif event.key == K_RETURN:
+                file = open(bad_words_file, 'r').readlines()
+                if "".join(current_string) in [thing[:-1] for thing in file]: 
+                    current_string = []
+                else: 
+                    break
+            elif event.key == K_MINUS: current_string.append("_")
+            elif event.key <= 127:     current_string.append(chr(event.key))
+              
+            display_box(screen, question + ": " + "".join(current_string), font)
+        elif event.type == QUIT: quit()
+        return "".join(current_string)
 
 
 def main():
