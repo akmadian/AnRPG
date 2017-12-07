@@ -7,7 +7,7 @@
 
     get_angle and project were taken from a pygame forum.
 """
-from math import sin, cos, atan2, pi
+from math import sin, cos, atan2, pi, sqrt
 
 def player_verts(player_pos, size):
     """Calulates the vertices of the player sprite"""
@@ -47,4 +47,6 @@ def project(pos, angle, distance):
     return (pos[0] + (cos(angle) * distance),
             pos[1] - (sin(angle) * distance))
 
+def distance(p1, p2):
+    return sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
 

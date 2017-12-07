@@ -75,6 +75,7 @@ active_effecttimers    = []
 active_effects         = []
 active_pillars         = []
 active_walls           = []
+active_rooms           = []
 active_collective      = [active_keys, active_projectiles, active_mines, active_enemies_small,
                           active_enemies_boss, active_powerups, active_effectblits, active_effectblits,
                           active_effecttimers, active_effects, active_pillars, active_walls]
@@ -287,6 +288,7 @@ class Player(pygame.sprite.Sprite):
         self.last_display_effect_start = None
         self.name_text = font_base.render(self.player_name, True, Color.Black)
         self.rect = pygame.Rect(self.x + 8, self.y + 52, 67, 134)
+        self.curr_room = 0
 
     def refresh_rect(self):
         self.rect = pygame.Rect(self.x + 8, self.y + 52, 67, 134)
@@ -364,6 +366,7 @@ class PowerUp(pygame.sprite.Sprite):
         self.img_size = img_obj.get_rect().size
         self.effect_text = effect_text
         self.rect = pygame.Rect(self.pos, self.img_size)
+        active_rooms[player.curr_room].entities.append(self)
 
     def collided_with(self, sprite_rect):
         return self.rect.colliderect(sprite_rect)
@@ -413,6 +416,9 @@ class HealthPack(PowerUp): # INSTANT POWERUP
         self.max_active = config.max_healthpacks
         self.kill_type = 'healthpack'
         self.effect = '+ Health'
+        global active_healthpacks
+        active_healthpacks += 1
+        active_powerups.append(self)
         PowerUp.__init__(self, x, y, self.img_obj, None, self.effect)
 
     def do_effect(self):
@@ -428,6 +434,9 @@ class DamageUp(PowerUp): # TEMPORARY POWERUP
         self.lifespan = config.dmgup_lifespan
         self.active_effect = 'Damage Buff'
         self.effect = '+ Damage'
+        global active_dmgup
+        active_dmgup += 1
+        active_powerups.append(self)
         PowerUp.__init__(self, x, y, self.img_obj, self.active_effect, self.effect)
     def do_effect(self):
         for atk in player.atks: atk[0] += config.dmgup_effect_amount
@@ -451,6 +460,9 @@ class Shield(PowerUp):
         self.lifespan = config.shield_lifespan
         self.active_effect = 'Immunity'
         self.effect = 'Shield'
+        global active_shield
+        active_shield += 1
+        active_powerups.append(self)
         PowerUp.__init__(self, x, y, self.img_obj, u'Immunity', u'Immunity')
 
     def do_effect(self):
@@ -473,6 +485,7 @@ class EffectBlit:
         self.effect_text = effect_type
         self.color = color
         self.display_effect_text = font_base.render(self.effect_text, True, self.color)
+        active_effectblits.append(self)
 
     def do_kill(self):
         del active_effectblits[active_effectblits.index(self)]
@@ -481,6 +494,7 @@ class EffectTimer: # ONLY USED IN TEMPORARY POWERUPS
         self.tickmade = ticks
         self.lifespan = lifespan
         self.parent = parent_obj
+        active_effecttimers.append(self)
 
     def check_timer(self):
         if ticks - self.tickmade >= self.lifespan:
@@ -514,15 +528,18 @@ class Pillar(Obstacle):
         self.img_obj = pygame.image.load(assets_base_path + '/pillar.png')
         self.img_size = self.img_obj.get_rect().size
         self.rect = pygame.Rect(x + 6, y + 19, 49, 107)
+        active_pillars.append(self)
         Obstacle.__init__(self, x, y, self.rect, self.img_obj)
 class Wall(Obstacle):
     def __init__(self, x, y):
         self.img_obj = pygame.image.load(assets_base_path + '/wall.png')
         self.rect = pygame.Rect(x + 6, y + 19, 49, 107)
+        active_walls.append(self)
         Obstacle.__init__(self, x, y, self.rect, self.img_obj)
 class InvisWall(Obstacle):
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
+        active_walls.append(self)
         Obstacle.__init__(self, x, y, self.rect, None)
 
 class Menu(pygame.sprite.Sprite):
@@ -605,28 +622,33 @@ class SettingsMenu(Menu):
         else:
             self.active = True
 
+class Room:
+    def __init__(self):
+        self.relative_pos = None
+        self.obstacles = self.genobstacles()
+        self.entities = []
+        self.room_id = len(active_rooms)
+        self.rect = None
+
+
+    def genobstacles(self):
+        return []
+
+
 
 settings_menu = SettingsMenu()
 active_menus.append(settings_menu)
 
-pillar = Pillar(200, 500)
-active_pillars.append(pillar)
-pillar = Pillar(800, 500)
-active_pillars.append(pillar)
-pillar = Pillar(200, 100)
-active_pillars.append(pillar)
-pillar = Pillar(800, 100)
-active_pillars.append(pillar)
+Pillar(200, 500)
+Pillar(800, 500)
+Pillar(200, 100)
+Pillar(800, 100)
 
 ## Init for border walls
-inviswall = InvisWall(-1, -1, window_width + 1, 1)
-active_walls.append(inviswall)
-inviswall = InvisWall(window_width + 1, -1, 1, 900)
-active_walls.append(inviswall)
-inviswall = InvisWall(-1, window_height + 1, 1800, 1)
-active_walls.append(inviswall)
-inviswall = InvisWall(-1, -1, 1, window_height + 1)
-active_walls.append(inviswall)
+InvisWall(-1, -1, window_width + 1, 1)
+InvisWall(window_width + 1, -1, 1, 900)
+InvisWall(-1, window_height + 1, 1800, 1)
+InvisWall(-1, -1, 1, window_height + 1)
 
 
 player = Player()
@@ -667,14 +689,10 @@ def kill_all_keys():
 
 def remake_inviswalls(w, h):
     del active_walls[:]
-    wall_ = InvisWall(-1, -1, w + 1, 1)
-    active_walls.append(wall_)
-    wall_ = InvisWall(window_width + 1, -1, 1, h + 1)
-    active_walls.append(wall_)
-    wall_ = InvisWall(-1, h + 1, w + 1, 1)
-    active_walls.append(wall_)
-    wall_ = InvisWall(-1, -1, 1, h + 1)
-    active_walls.append(wall_)
+    InvisWall(-1, -1, w + 1, 1)
+    InvisWall(window_width + 1, -1, 1, h + 1)
+    InvisWall(-1, h + 1, w + 1, 1)
+    InvisWall(-1, -1, 1, h + 1)
 
 
 
@@ -763,32 +781,23 @@ while not gameExit:
     if config.enable_enemy_spawning:
         # BOSSES
         if ticks - last_enemy_boss_death > config.enemy_boss_create_freq and len(active_enemies_boss) <= config.max_enemy_boss:
-            boss = BossEnemy(randint(200, 1000), randint(200, 600))
-            active_enemies_boss.append(boss)
+            BossEnemy(randint(200, 1000), randint(200, 600))
 
         # SMALL ENEMIES
         if ticks - last_enemy_small_death > config.enemy_small_create_freq and len(active_enemies_small) <= config.max_enemy_small:
-            smallenemy = SmallEnemy(randint(200, 1000), randint(200, 600))
-            active_enemies_small.append(smallenemy)
-
+            SmallEnemy(randint(200, 1000), randint(200, 600))
     # HEALTH PACKS
     if ticks - last_healthpack_used > config.healthpack_create_freq and active_healthpacks <= config.max_healthpacks:
-        pack = HealthPack(randint(60, 1140), randint(40, 760))
-        active_healthpacks += 1
-        active_powerups.append(pack)
+        HealthPack(randint(60, 1140), randint(40, 760))
 
     # ATKUP
     if ticks - last_attackboost_used > config.dmgup_create_freq and active_dmgup <= config.max_dmgup:
-        buff = DamageUp(randint(60, 1140), randint(40, 760))
-        active_dmgup += 1
-        active_powerups.append(buff)
+        DamageUp(randint(60, 1140), randint(40, 760))
 
     # SHIELD
     if ticks - last_shield_used > config.shield_create_freq and active_shield <= config.max_shield:
         if randint(0, 5) == 1:
-            shield = Shield(randint(60, 1140), randint(40, 760))
-            active_shield += 1
-            active_powerups.append(shield)
+            Shield(randint(60, 1140), randint(40, 760))
 
 
     ## MOVEMENT, COLLISION, AND FPS
@@ -801,15 +810,9 @@ while not gameExit:
     pillar_player_collisions_list = pygame.sprite.spritecollide(rect_, active_pillars, False)
     wall_player_collisions_list   = pygame.sprite.spritecollide(rect_, active_walls, False)
     if len(pillar_player_collisions_list + wall_player_collisions_list) != 0:
-        # print('Collisions With Pillars')
         pass
     else:
-        # print('No Collisions With Pillars')
-        if active_keys['w']: player.y -= config.player_movespeed_vertical
-        if active_keys['s']: player.y += config.player_movespeed_vertical
-        if active_keys['a']: player.x -= config.player_movespeed_horizontal
-        if active_keys['d']: player.x += config.player_movespeed_horizontal
-        player.refresh_rect()
+        player = rect_
 
     # PROJECTILE COLLISION SCANNING
     # PROJECTILES
@@ -826,8 +829,7 @@ while not gameExit:
                 if player.godmode is False:
                     print('Godmode Off')
                     player.health = player.health - projectile.damage
-                    effect = EffectBlit(ticks, '- ' + str(projectile.damage) + ' Health', (255, 0, 0))
-                    active_effectblits.append(effect)
+                    EffectBlit(ticks, '- ' + str(projectile.damage) + ' Health', (255, 0, 0))
                 projectile.kill()
 
         # If player projectile collides with enemy
@@ -848,7 +850,7 @@ while not gameExit:
     if len(active_mines) != 0:
         for mine in active_mines:
             if mine.collided_with():
-                player.health = player.health - mine.damage
+                player.health -= mine.damage
                 mine.kill()
 
     # HEALTHPACKS
