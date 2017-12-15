@@ -12,8 +12,8 @@ render_hitboxes        = True
 
 
 ## Window Settings
-window_width  = 1500
-window_height = 600
+window_width  = 1300
+window_height = 800
 
 
 ## Misc
@@ -54,7 +54,7 @@ player_godmode              = True
 ##### Enemies #####
 enemy_small_create_freq = 300 # Lower to spawn more often
 enemy_boss_create_freq  = 800
-enable_enemy_spawning   = False
+enable_enemy_spawning   = True
 
 ## Small Enemies
 enemy_small_health       = 150
@@ -73,3 +73,10 @@ enemy_boss_score_val        = 70
 enemy_boss_move_properties  = {'x': {'min': 5, 'max': 12},
                                'y': {'min': 5, 'max': 12},
                                'ticks_to_move': 3}
+
+
+## Generation ##
+minmax_obstacles_perroom = (1, 4)
+room_height = window_height
+room_width  = window_width
+
