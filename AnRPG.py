@@ -14,6 +14,7 @@ from datetime import datetime
 from random import randint, choice
 from copy import copy
 import configparser
+import tkinter as tk
 
 # Proprietary Resources
 import functions
@@ -29,6 +30,15 @@ from colors_file import Color
 #TODO: ??? Implement Dataclasses ???
 #TODO: Projectiles dont get created if the event is far enough to the right
 #TODO: Active damage up system gets messed up after first enemy kill
+
+"""
+SETTINGS MENU PLANNING
+
+- On setting change, set var that tells main loop to re read config file.
+
+
+
+"""
 pygame_init = pygame.init()
 
 # ASSET OBJECTS AND PATHS
@@ -610,6 +620,7 @@ class Menu(pygame.sprite.Sprite):
 
     def set_active(self):
         pass
+    '''
 class SettingsMenu(Menu):
     def __init__(self):
         self.menu_width = 400
@@ -682,6 +693,40 @@ class SettingsMenu(Menu):
             self.active = False
         else:
             self.active = True
+'''
+class SettingsMenu(tk.Frame):
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.checkbutton_setting = True
+        self.pack()
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Check button
+        button = CheckBox(self.not_option)
+        CheckVar = tk.IntVar(value=self.checkbutton_setting)
+        self.check = tk.Checkbutton(self, variable=CheckVar)
+        self.check['command'] = button.on_change
+        self.check['text'] = 'Toggle Something'
+        self.check['variable'] = self.checkbutton_setting
+        if button.setting:
+            self.check.select()
+        self.check.pack(side='top')
+
+    @staticmethod
+    def not_option(parent):
+        print(parent.setting)
+        parent.setting = not parent.setting
+        print(parent.setting)
+
+class CheckBox(tk.Checkbutton):
+    def __init__(self, callback):
+        tk.Checkbutton.__init__(self)
+        self.setting = True
+        self.callback = callback
+
+    def on_change(self):
+        self.callback(self)
 
 class Room:
     def __init__(self):
@@ -815,15 +860,18 @@ while not gameExit:
         ## Projectiles and Targeting
         # Making the projectile
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if settings_menu.check_collision(event.pos):
-                settings_menu.toggle_active()
-            elif settings_menu.check_expanded_collision(event.pos):
-                settings_menu.check_which_setting_toggle(event.pos)
-            else:
-                if pygame.mouse.get_pressed()[0] == 1:
-                    player.attack(event.pos, 1, active_room.projectiles)
-                elif pygame.mouse.get_pressed()[2] == 1:
-                    pass
+            '''
+            IF CLICK TOGGLES SETTINGS MENU, ACTIVATE TKINTER
+            
+            root = tk.Tk()
+            app = Application(master=root)
+            app.mainloop()
+                '''
+
+            if pygame.mouse.get_pressed()[0] == 1:
+                player.attack(event.pos, 1, active_room.projectiles)
+            elif pygame.mouse.get_pressed()[2] == 1:
+                pass
 
         # Player Facing
         if event.type == pygame.MOUSEMOTION:
