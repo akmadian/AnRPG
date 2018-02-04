@@ -1,36 +1,41 @@
-import tkinter as tk
-import config
+from appJar import gui
+import configparser
+from sys import argv
+from os import path
 
-class SettingsMenu(tk.Frame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.pack()
-        self.create_widgets()
+SettingsMenu = gui()
+SettingsMenu.setFont(12)
+SettingsMenu.setTitle('AnRPG Settings')
+SettingsMenu.setIcon(path.os.path.dirname(path.realpath(argv[0])) + '/Assets/' + '/projectiles' + '/blue_projectile.png')
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-    def create_widgets(self):
-        #Player God Mode
-        button_pgm = CheckBox(self.not_option, config.player_godmode)
-        self.pgm = tk.Checkbutton(self, variable=button_pgm.setting, command=button_pgm.on_change, text='Player Godmode')
-        if button_pgm.setting: self.pgm.select()
-        self.pgm.pack(side='top')
+reread_config = False
+
+def refresh_settings():
+    global reread_config
+    print(SettingsMenu.getAllCheckBoxes())
+    for setting, value in SettingsMenu.getAllCheckBoxes().items():
+        config.set('DEFAULT', setting, str(value))
+    with open('config.ini', 'w') as configfile:
+        config.write(configfile)
+    reread_config = True
+    SettingsMenu.stop()
 
 
+def populate_settings_window():
+    SettingsMenu.addCheckBox('Player Godmode')
+    SettingsMenu.addCheckBox('Render Player Vertices')
+    SettingsMenu.addCheckBox('Render Hitboxes')
+    SettingsMenu.addCheckBox('Enable Enemy Spawning')
 
-    @staticmethod
-    def not_option(parent):
-        print(parent.setting)
-        parent.setting = not parent.setting
-        print(parent.setting)
 
-class CheckBox(tk.Checkbutton):
-    def __init__(self, callback, value):
-        tk.Checkbutton.__init__(self)
-        self.setting = value
-        self.callback = callback
+    for setting in config['DEFAULT']:
+        if config.getboolean('DEFAULT', setting) is True:
+            SettingsMenu.setCheckBox(setting.title(), callFunction=False)
 
-    def on_change(self):
-        self.callback(self)
+    SettingsMenu.addButton('Save and Exit', refresh_settings)
 
-root = tk.Tk()
-app = SettingsMenu(master=root)
-app.mainloop()
+
+populate_settings_window()
+SettingsMenu.go()
