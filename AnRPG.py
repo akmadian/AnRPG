@@ -113,6 +113,7 @@ SettingsMenu = gui()
 SettingsMenu.setFont(12)
 SettingsMenu.setTitle('AnRPG Settings')
 SettingsMenu.setIcon(path.os.path.dirname(path.realpath(argv[0])) + '/Assets/' + '/projectiles' + '/blue_projectile.png')
+SettingsMenu.setSize(300, 200)
 
 persist_cfg = configparser.ConfigParser()
 persist_cfg.read('config.ini')
@@ -721,7 +722,10 @@ def refresh_settings():
     global gameState
     print(SettingsMenu.getAllCheckBoxes())
     for setting, value in SettingsMenu.getAllCheckBoxes().items():
-        persist_cfg.set('DEFAULT', setting, str(value))
+        persist_cfg.set('CHECKS', setting, str(value))
+    for setting, value in SettingsMenu.getAllEntries().items():
+        persist_cfg.set('ENTRIES', setting, str(value))
+
     with open('config.ini', 'w') as configfile:
         persist_cfg.write(configfile)
     reread_config = True
@@ -730,17 +734,30 @@ def refresh_settings():
 
 def populate_settings_window():
     try:
+        SettingsMenu.addLabel('Main Title', '---AnRPG Settings--')
+        SettingsMenu.addLabel('Player Settings', '--Player Settings--')
         SettingsMenu.addCheckBox('Player Godmode')
+        SettingsMenu.addLabel('Player Move Settings', 'Player Speed')
+        SettingsMenu.addNumericLabelEntry('Move Speed X')
+        SettingsMenu.addNumericLabelEntry('Move Speed Y')
+        SettingsMenu.addLabel('Powerups', '--Powerups--')
+        SettingsMenu.addNumericLabelEntry('Max Healthpacks')
+        SettingsMenu.addNumericLabelEntry('Max Damage Up')
+        SettingsMenu.addNumericLabelEntry('Max Shield')
+        SettingsMenu.addLabel('Game Settings', '--Game Settings--')
         SettingsMenu.addCheckBox('Render Player Vertices')
         SettingsMenu.addCheckBox('Render Hitboxes')
         SettingsMenu.addCheckBox('Enable Enemy Spawning')
+        SettingsMenu.addLabel('Bottom Divider', '~~~~~~~~~~~~~~~~~')
+        SettingsMenu.addButton('Save and Exit', refresh_settings)
 
-
-        for setting in persist_cfg['DEFAULT']:
-            if persist_cfg.getboolean('DEFAULT', setting) is True:
+        for setting in persist_cfg['CHECKS']:
+            if persist_cfg.getboolean('CHECKS', setting) is True:
                 SettingsMenu.setCheckBox(setting.title(), callFunction=False)
 
-        SettingsMenu.addButton('Save and Exit', refresh_settings)
+        for setting in persist_cfg['ENTRIES']:
+            SettingsMenu.setEntry(setting.title(), persist_cfg['ENTRIES'][str(setting)])
+
     except appjar.ItemLookupError:
         pass
 
@@ -814,7 +831,7 @@ while not gameExit:
             else: player.facing = 'left'
 
 
-    if player.health <= 0 and persist_cfg.getboolean('DEFAULT', 'player godmode') is False:
+    if player.health <= 0 and persist_cfg.getboolean('CHECKS', 'player godmode') is False:
         player.kill()
 
     if gameState == RUNNING:
@@ -841,7 +858,7 @@ while not gameExit:
 
 
         ## SPAWNING
-        if config.enable_enemy_spawning:
+        if persist_cfg.getboolean('CHECKS', 'enable enemy spawning'):
             # BOSSES
             if ticks - last_enemy_boss_death > config.enemy_boss_create_freq and len(active_room.enemies_boss) <= config.max_enemy_boss:
                 BossEnemy(randint(200, 1000), randint(200, 600), active_room.enemies_boss)
@@ -850,25 +867,25 @@ while not gameExit:
             if ticks - last_enemy_small_death > config.enemy_small_create_freq and len(active_room.enemies_small) <= config.max_enemy_small:
                 SmallEnemy(randint(200, 1000), randint(200, 600), active_room.enemies_small)
         # HEALTH PACKS
-        if ticks - last_healthpack_used > config.healthpack_create_freq and active_healthpacks <= config.max_healthpacks:
+        if ticks - last_healthpack_used > config.healthpack_create_freq and active_healthpacks <= persist_cfg.getint('ENTRIES', 'max healthpacks'):
             HealthPack(randint(60, 1140), randint(40, 760), active_room.powerups)
 
         # ATKUP
-        if ticks - last_attackboost_used > config.dmgup_create_freq and active_dmgup <= config.max_dmgup:
+        if ticks - last_attackboost_used > config.dmgup_create_freq and active_dmgup <= persist_cfg.getint('ENTRIES', 'max damage up'):
             DamageUp(randint(60, 1140), randint(40, 760), active_room.powerups)
 
         # SHIELD
-        if ticks - last_shield_used > config.shield_create_freq and active_shield <= config.max_shield:
+        if ticks - last_shield_used > config.shield_create_freq and active_shield <= persist_cfg.getint('ENTRIES', 'max shield'):
             if randint(0, 5) == 1:
                 Shield(randint(60, 1140), randint(40, 760), active_room.powerups)
 
 
         ## MOVEMENT, COLLISION, AND FPS
         rect_ = copy(player)
-        if active_keys['w']: rect_.y -= config.player_movespeed_vertical
-        if active_keys['s']: rect_.y += config.player_movespeed_vertical
-        if active_keys['a']: rect_.x -= config.player_movespeed_horizontal
-        if active_keys['d']: rect_.x += config.player_movespeed_horizontal
+        if active_keys['w']: rect_.y -= int(float(persist_cfg['ENTRIES']['move speed y']))
+        if active_keys['s']: rect_.y += int(float(persist_cfg['ENTRIES']['move speed y']))
+        if active_keys['a']: rect_.x -= int(float(persist_cfg['ENTRIES']['move speed x']))
+        if active_keys['d']: rect_.x += int(float(persist_cfg['ENTRIES']['move speed x']))
         rect_.refresh_rect()
         pillar_player_collisions_list = pygame.sprite.spritecollide(rect_, active_room.obstacles, False)
         wall_player_collisions_list = pygame.sprite.spritecollide(rect_, active_room.inviswalls, False)
@@ -889,7 +906,7 @@ while not gameExit:
             # If enemy projectile collides with player
             if projectile.collided_with(player.rect):
                 if projectile.type == 'enemy':
-                    if persist_cfg.getboolean('DEFAULT', 'player godmode') is False:
+                    if persist_cfg.getboolean('CHECKS', 'player godmode') is False:
                         print('Godmode Off')
                         player.health = player.health - projectile.damage
                         EffectBlit(ticks, '- ' + str(projectile.damage) + ' Health', (255, 0, 0))
@@ -1012,7 +1029,7 @@ while not gameExit:
 
     # OPTIONAL, TO ENABLE, SEE CONFIG FILE SETTINGS
     # To monitor player verts
-    if config.render_hitboxes:
+    if persist_cfg.getboolean('CHECKS', 'render hitboxes'):
         if len(active_room.obstacles) != 0:
             for obstacle in active_room.obstacles:
                 s = pygame.Surface((obstacle.rect[2], obstacle.rect[3]))
@@ -1042,24 +1059,16 @@ while not gameExit:
                 game_display.blit(s, (projectile.rect[0], projectile.rect[1]))
 
         s = pygame.Surface((player.rect[2], player.rect[3]))
-        s.set_alpha(150)         
+        s.set_alpha(150)
         s.fill((255, 0, 0))
         game_display.blit(s, (player.rect[0], player.rect[1]))
 
 
-    if config.render_player_verts:
+    if persist_cfg.getboolean('CHECKS', 'render player vertices'):
         for _, coords in player.img_verts.items():
             pygame.draw.circle(game_display, Color.Goldenrod, coords, 10)
 
 
     pygame.display.update()
-
-    ''' For monitoring tick times and fps for performance eval
-    tick_end_time = datetime.now()
-    tick_time = tick_end_time - tick_start_time
-    # print(str(tick_time) + ' fps - ' + str(fps))
-    with open('tick_times.txt', 'a') as f:
-        f.write(str(tick_time)[6:] + 'fps - %s' + '\n') %fps
-    '''
 pygame.quit()
 quit()
